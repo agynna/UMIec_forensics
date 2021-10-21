@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
 from setuptools import setup
-from setuptools import find_packages
 
-pack = find_packages() 
-
-install_requires = ["https://github.com/tobbeost/umierrorcorrect/archive/v0.19.tar.gz","fdstools"]
-
-exec(open('umierrorcorrect/version.py').read())
+install_requires = ["fdstools"]
 
 setup(name='umierrorcorrect',
-      version=__version__,
-      description='UMI error correct',
-      long_description = open('README.md').read(),
-      url='http://github.com/',
+      description='UMIerrorcorrect Forensics',
+      #long_description = open('README.md').read(),
+      #url='http://github.com/',
       author='Froste Svensson',
       author_email='froste.svensson@gmail.com',
-      packages=pack,
       license='mit',
       package_data={'umierrorcorrect': ['README.md']
                    },
