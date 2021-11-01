@@ -2,12 +2,13 @@ import argparse
 import subprocess
 import sys
 import os
-from umierrorcorrect_forensics.run_flash import run_flash
+import logging
+from run_flash import run_flash
 from umierrorcorrect.preprocess import run_preprocessing
-from umierrorcorrect_forensics.run_tssv import run_tssv
+from run_tssv import run_tssv
 from umierrorcorrect.umi_error_correct import run_umi_errorcorrect
 from umierrorcorrect.get_consensus_statistics import run_get_consensus_statistics
-from umierrorcorrect_forensics.run_fdstools import run_fdstools
+from run_fdstools import run_fdstools
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="TSSV seperation of Simsenseq sequencing of forensics markers ")
@@ -29,12 +30,43 @@ def parseArgs():
     logging.info('Starting UMIerrorcorrect forensics')
     return(args)
 
-if __name__ == '__main__':
-    args = parseArgs()
+def main(): 
+    # Collapse paired end reads into single reads 
     if args.p:
-        run_flash()
-    run_preprocessing()
+        tmp_path = './tmp/' 
+        if not os.path.isdir(tmp_path): 
+            os.mkdir(tmp_path) # Move to /temp/ using tempfile? 
+            logging.info('Created temporary directory "' + os.path.abspath(tmp_path) + '"')
+            
+        merged_reads_file = run_flash(args.read1, args.read2, args.num_threads, tmp_path)
+        
+    # Preprocessing 
+    read_filename = os.path.basename(args.read1)
+    args.sample_name = read_filename.split('.',1)[0]
+    args.tmpdir = tmp_path
+    args.mode = 'single'   # We do not use the double end read feature of umierrorcorrect 
+    args.gziptool = 'gzip' # Should test if pigz is available, and then serve that instead. 
+    args.umi_length = 12
+    args.spacer_length = 16
+    if args.p:
+        args.read1 = merged_reads_file
+        
+    if not os.path.isdir(args.output_path): 
+        os.mkdir(args.output_path) 
+        logging.info('Created output directory ' + os.path.abspath(args.output_path)) 
+    else: 
+        logging.warning('Output directory "' + os.path.abspath(args.output_path) + '" exists. May overwrite files.')
+    run_preprocessing(args)
+    print(type(args))
+
     run_tssv()
+    
     run_umi_errorcorrect()
     run_get_consensus_statistics()
     run_fdstools()
+
+
+if __name__ == '__main__':
+    args = parseArgs()
+    main() 
+    

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from setuptools import setup
 
-install_requires = ["fdstools"]
+install_requires = ["fdstools", 
+                    "matplotlib", 
+                    "pysam"]
 
 setup(name='umierrorcorrect',
       description='UMIerrorcorrect Forensics',

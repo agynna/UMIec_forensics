@@ -22,8 +22,33 @@ def parseArgs():
     return(args)
 
 
-def run_flash(read_1, read_2, num_threads, output_path):
-   return None
+def run_flash(read1, read2, num_threads, output_path):
+    # Make sure to turn lowercase overhang option -l on! 
+    curr_path = os.path.dirname(sys.argv[0])
+    flash_path = os.path.join(curr_path, 'FLASH-lowercase-overhang') 
+    subprocess.run(['make', flash_path])
+    
+    read_filename = os.path.basename(read1) 
+    read_name = read_filename.split('.',1)[0] 
+    output_file = os.path.join(output_path, read_name) 
+    
+    flash_run = subprocess.run([os.path.join(flash_path,'flash'), 
+                                read1, 
+                                read2, 
+                                '-t', num_threads, 
+                                '-m', str(100),     # Minimum overlap length
+                                '-M', str(300),     # Maximum overlap to be considered in scoring
+                                '-o', output_file, 
+                                '-lz'],             # Lowercase overhang + compress output
+                              stdout = subprocess.DEVNULL
+                              )
+    
+    if flash_run.returncode == 0:
+        logging.info('Flash finished successfully') 
+    else: 
+        flash_run.check_returncode()
+    return output_file + '.extendedFrags.fastq.gz'
 
 if __name__ == '__main__':
     args = parseArgs()
+    run_flash(args.read1, args.read2, args.num_threads, args.output_path) 
