@@ -98,9 +98,9 @@ def main():
     # Convert to fastq data to BAM file
     # Assume for now that the BED position file has the same basename and lives
     # in the same dir as the library file.
-    bed_file = [os.path.splitext(args.library_file)[0] + '.bed']
-    bam_file = os.path.join(output_path, [read_name + '.bam'])
-    fastq2bam(input_path, bam_file, bed_file, args.library_file)
+    bed_file = os.path.splitext(args.library_file)[0] + '.bed'
+    bam_file = os.path.join(output_path, read_name + '.bam')
+    bam_file = fastq2bam(output_path, bam_file, bed_file, args.library_file)
 
     run_umi_errorcorrect()
     run_get_consensus_statistics()

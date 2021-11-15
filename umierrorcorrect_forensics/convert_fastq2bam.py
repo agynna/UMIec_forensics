@@ -1,9 +1,11 @@
 import pysam
+import sys
 import os
 import logging
 import subprocess
 import argparse
-import fastq2sam
+import tempfile
+import fastq2sam as f2s
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="Runs full FDStools pipeline")
@@ -21,16 +23,33 @@ def parseArgs():
     return(args)
 
 def fastq2bam(infolder, outfile, bed_file, library_file):
-    samfile = [outfile + '.sam'] # TODO Change to tempfile
-    chromsomes, pos, fq_dirs = get_chr_str(bed_file)
-    write_header(samfile, chromsomes)
-    loop_fds_result(infolder, samfile, chromsomes, fq_dirs, pos, library_file)
+    [_, samfile] = tempfile.mkstemp(suffix='.sam', text=True)
+    chromsomes, pos, fq_dirs = f2s.get_chr_str(bed_file)
+    f2s.write_header(samfile, chromsomes)
+    f2s.loop_fds_result(infolder, samfile, chromsomes, fq_dirs, pos, library_file)
+    logging.info('Converted fastq to SAM file: ' + infolder + ' to '+ samfile)
 
-    subprocess.run(['samtools',
-                    'view',
-                    '--bam', # Output i BAM format
-                    samfile, '>', outfile])
-                    
+    with open(outfile, 'w') as of:
+        subprocess.run(['samtools', 'view',
+                        '--bam', # Output i BAM format
+                        samfile],
+                        stdout=of,
+                        check=True)
+    logging.info('Compressed SAM to BAM file: ' + outfile)
+    os.remove(samfile)
+
+    outfile_sorted = outfile + '_sorted'
+    subprocess.run(['samtools', 'sort',
+                    outfile,
+                    '-o', outfile_sorted],
+                    check=True)
+    logging.info('Sorted BAM file: ' + outfile_sorted)
+
+    subprocess.run(['samtools', 'index',
+                    outfile_sorted],
+                    check=True)
+    logging.info('Indexed BAM file. Fastq to BAM file conversion complete.')
+    return outfile_sorted
 
 def main(args):
     fastq2bam(args.infolder, args.outfile, args.bed_file, args.lib)
