@@ -7,7 +7,7 @@ def parse_arg():
     parser.add_argument("-i", "--infile", dest = "infolder", help = "Folder created by FDStools tssv")
     parser.add_argument("-o", "--outfile", dest = "outfile", help = "SAM file name to write too")
     parser.add_argument("-b", "--bed", dest = "bedfile", help = "BED file to get chromesome and strname from")
-    parser.add_argument("-l", "--Library", dest = "lib", help = "BED file to get chromesome and strname from")
+    parser.add_argument("-l", "--library", dest = "lib", help = "BED file to get chromesome and strname from")
     args = parser.parse_args(sys.argv[1:])
     return args
 def rev_comp(seq):
@@ -32,6 +32,29 @@ def get_chr_str(bedfile):
             fq_dirs.append(line[3])
     return (chromsomes,pos,fq_dirs)
 
+def levenshtein(s1, s2):
+    """
+    Levenshtein distance, implementation from the Algorithm implementation
+    wikibook: en.m.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance
+    This avoids the jellyfish dependency, but adds ~50 s of computation time.
+    """
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1 # j+1 instead of j since previous_row and current_row are one character longer
+            deletions = current_row[j] + 1       # than s2
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
 def search_for_flank_trim(seq, flank, rev_flank,flank_len,flank_rev_len):
     found = False
     """
@@ -52,6 +75,8 @@ def search_for_flank_trim(seq, flank, rev_flank,flank_len,flank_rev_len):
 
             subseq = seq[base-flank_len : base]
             subseq_rev = seq[base-flank_rev_len : base]
+            #ham = levenshtein(subseq,flank)
+            #ham_rev = levenshtein(subseq_rev,rev_flank)
             ham = jf.levenshtein_distance(subseq,flank)
             ham_rev = jf.levenshtein_distance(subseq_rev,rev_flank)
             if ham <= 2:
@@ -62,6 +87,7 @@ def search_for_flank_trim(seq, flank, rev_flank,flank_len,flank_rev_len):
                 #print('rev flank found ham',base,base - flank_len, base + flank_len , ham)
                 return base
                 break
+
 def get_flanks_lib(filename):
 
     """
