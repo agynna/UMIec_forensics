@@ -10,6 +10,8 @@ def parseArgs():
     parser = argparse.ArgumentParser(description="Combines paired reads to one consensus read")
     parser.add_argument('-o', '--output_path', dest='output_path',
                         help='Path to the output directory, required', required=True)
+    parser.add_argument('-l', '--log_path', dest='log_path',
+                        help='Path to save log file, if different from output')
     parser.add_argument('-r1', '--read1', dest='read1',
                         help='Path to first FASTQ file, R1, required', required=True)
     parser.add_argument('-r2', '--read2', dest='read2',
@@ -22,33 +24,46 @@ def parseArgs():
     return(args)
 
 
-def run_flash(read1, read2, num_threads, output_path):
-    # Make sure to turn lowercase overhang option -l on! 
+def run_flash(read1, read2, num_threads, output_path, log_path):
     curr_path = os.path.dirname(sys.argv[0])
-    flash_path = os.path.join(curr_path, 'FLASH-lowercase-overhang') 
+    flash_path = os.path.join(curr_path, 'FLASH-lowercase-overhang')
     subprocess.run(['make', flash_path])
-    
-    read_filename = os.path.basename(read1) 
-    read_name = read_filename.split('.',1)[0] 
-    output_file = os.path.join(output_path, read_name) 
-    
-    flash_run = subprocess.run([os.path.join(flash_path,'flash'), 
-                                read1, 
-                                read2, 
-                                '-t', num_threads, 
-                                '-m', str(100),     # Minimum overlap length
-                                '-M', str(300),     # Maximum overlap to be considered in scoring
-                                '-o', output_file, 
-                                '-lz'],             # Lowercase overhang + compress output
-                              stdout = subprocess.DEVNULL
-                              )
-    
+
+    read_filename = os.path.basename(read1)
+    read_name = read_filename.split('.',1)[0]
+
+    stdout_file = os.path.join(log_path, 'flash_out.txt')
+    with open(stdout_file, 'w') as f:
+        # Make sure to turn lowercase overhang option -l on!
+        flash_run = subprocess.run([os.path.join(flash_path,'flash'),
+                                    read1,
+                                    read2,
+                                    '-t', num_threads,
+                                    '-m', str(100),     # Minimum overlap length
+                                    '-M', str(300),     # Maximum overlap to be considered in scoring
+                                    '-d', output_path,
+                                    '-o', read_name,
+                                    '-lz'],             # Lowercase overhang + compress output
+                                  stdout=f,
+                                  stderr=subprocess.STDOUT
+                                  )
+
     if flash_run.returncode == 0:
-        logging.info('Flash finished successfully') 
-    else: 
+        logging.info('Flash finished successfully')
+    else:
         flash_run.check_returncode()
-    return output_file + '.extendedFrags.fastq.gz'
+
+    output_file = os.path.join(output_path, read_name) + '.extendedFrags.fastq.gz'
+    return output_file
+
+def main(args):
+    if args.log_path is None:
+        log_path = args.output_path
+    else:
+        log_path = args.log_path
+    run_flash(args.read1, args.read2, args.num_threads, log_path)
+    return None
 
 if __name__ == '__main__':
     args = parseArgs()
-    run_flash(args.read1, args.read2, args.num_threads, args.output_path) 
+    main(args)
