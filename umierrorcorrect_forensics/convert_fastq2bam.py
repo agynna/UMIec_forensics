@@ -22,16 +22,20 @@ def parseArgs():
     logging.info('Starting convert fastq to bam')
     return(args)
 
-def fastq2bam(infolder, outfile, bed_file, library_file):
+def fastq2bam(infolder, outfile, bed_file, library_file, num_threads=1):
     [_, samfile] = tempfile.mkstemp(suffix='.sam', text=True)
     chromsomes, pos, fq_dirs = f2s.get_chr_str(bed_file)
     f2s.write_header(samfile, chromsomes)
     f2s.loop_fds_result(infolder, samfile, chromsomes, fq_dirs, pos, library_file)
     logging.info('Converted fastq to SAM file: ' + infolder + ' to '+ samfile)
 
+    # pysam.view(samfile, # Does not produce output for unknown reason.
+    #             '--bam',
+    #             '--output', outfile,
+    #             )
     with open(outfile, 'w') as of:
         subprocess.run(['samtools', 'view',
-                        '--bam', # Output i BAM format
+                        '--bam',
                         samfile],
                         stdout=of,
                         check=True)
@@ -39,15 +43,16 @@ def fastq2bam(infolder, outfile, bed_file, library_file):
     os.remove(samfile)
 
     outfile_sorted = outfile + '_sorted'
+    # pysam.sort(outfile, # Fails with Typeerror
+    #             '-o', outfile_sorted,
+    #             '-@', num_threads)
     subprocess.run(['samtools', 'sort',
                     outfile,
                     '-o', outfile_sorted],
                     check=True)
     logging.info('Sorted BAM file: ' + outfile_sorted)
 
-    subprocess.run(['samtools', 'index',
-                    outfile_sorted],
-                    check=True)
+    pysam.index(outfile_sorted)
     logging.info('Indexed BAM file. Fastq to BAM file conversion complete.')
     return outfile_sorted
 

@@ -29,8 +29,8 @@ def qc_plot_alignment(tssv_folder, out_folder):
     import seaborn as sns
     import pandas as pd
     import matplotlib.pyplot as plt
-    logging.getLogger('matplotlib.font_manager').disabled=True
-    
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
     stat_df = pd.read_csv(tssv_folder + "/statistics.csv", sep = "\t")
     #flash_stat = pd.read_csv(args.outfolder + "/flash_out.txt", sep = "\t")
     print(stat_df)
