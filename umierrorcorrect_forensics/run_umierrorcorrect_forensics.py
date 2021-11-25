@@ -108,8 +108,6 @@ def main():
                                                     reads_file=merged_reads_file)
     else:
         read_name = os.path.basename(args.read1.split('.',1)[0])
-        print(args.output_path)
-        print(read_name)
         output_path = make_outputdir(args.output_path, read_name)
         args_preprocessing = set_args_preprocessing(args, read_name,
                                                     output_path)
@@ -150,7 +148,7 @@ def main():
     # Convert to Fastq file and run FDStools
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
     bam2fastq(filtered_reads_file, consensus_fastq_file)
-    #run_fdstools()
+    run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path)
 
 
 if __name__ == '__main__':

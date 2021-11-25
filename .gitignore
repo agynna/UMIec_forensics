@@ -1,3 +1,7 @@
+data/ultra_4_rep
+results/
+logs
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
