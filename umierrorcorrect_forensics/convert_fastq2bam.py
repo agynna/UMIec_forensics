@@ -22,11 +22,11 @@ def parseArgs():
     logging.info('Starting convert fastq to bam')
     return(args)
 
-def fastq2bam(infolder, outfile, bed_file, library_file, num_threads=1):
+def fastq2bam(infolder, outfile, bed_file, library_file, trim_flanks=True, num_threads=1):
     [_, samfile] = tempfile.mkstemp(suffix='.sam', text=True)
     chromsomes, pos, fq_dirs = f2s.get_chr_str(bed_file)
     f2s.write_header(samfile, chromsomes)
-    f2s.loop_fds_result(infolder, samfile, chromsomes, fq_dirs, pos, library_file)
+    f2s.loop_fds_result(infolder, samfile, chromsomes, fq_dirs, pos, library_file, trim_flanks)
     logging.info('Converted fastq to SAM file: ' + infolder + ' to '+ samfile)
 
     # pysam.view(samfile, # Does not produce output for unknown reason.

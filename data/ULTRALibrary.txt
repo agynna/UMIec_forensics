@@ -65,7 +65,6 @@ vWA      = GATG 0 8 GATA 0 20 GATG 0 8 GATA 0 20 GAGA 0 2 AATA 0 1 GATG 0 8 GATA
 ; the adjustment specified here.
 D1S1656  =  8
 D21S11   = 13
-vWA      = 16
 
 [max_expected_copies]
 ; Specify the maximum expected number of copies (i.e., alleles) for each marker

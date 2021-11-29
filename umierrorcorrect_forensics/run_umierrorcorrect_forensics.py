@@ -125,10 +125,13 @@ def main():
     # Convert to fastq data to BAM file
     # Assume for now that the BED position file has the same basename and lives
     # in the same dir as the library file.
+    # Paired end reads are already trimmed before FLASH, so skip trimming here.
     bed_file = os.path.splitext(args.library_file)[0] + '.bed'
     bam_file = os.path.join(output_path, read_name + '.bam')
+    trim_flanks = not args.p
     bam_file = fastq2bam(output_path, bam_file, bed_file,
-                         args.library_file, args.num_threads)
+                         args.library_file, trim_flanks,
+                         args.num_threads)
 
     # Run UMIerrorcorrect
     args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file, bed_file)
@@ -136,8 +139,9 @@ def main():
 
     consensus_reads_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
     filtered_reads_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
-    consensus_cutoff = 20
+    consensus_cutoff = 3
     filter_bam(consensus_reads_file, filtered_reads_file, consensus_cutoff)
+
     # Calculate UMIerrorcorrect statistics
     hist_file = os.path.join(output_path, read_name + '.hist')
     run_get_consensus_statistics(output_path,

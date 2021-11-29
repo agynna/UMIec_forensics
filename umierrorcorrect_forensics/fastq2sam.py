@@ -119,13 +119,14 @@ def write_header(outfile,chromsomes):
                 outfh.write(sam_header)
                 dup.append(chrom)
 
-def loop_fds_result(indir, outfile, chromsomes, fq_dir, pos, lib):
+def loop_fds_result(indir, outfile, chromsomes, fq_dir, pos, lib, trim_flanks=True):
 ### Loop through 7 hardcoded different fastq files output of tssv and writes them into sam file
     flanks = get_flanks_lib(lib)
     for dire, chromsome, pos in zip(fq_dir, chromsomes, pos):
-        fq2sam(f"{indir}/{dire}/paired.fq", outfile, dire, chromsome, pos, flanks[dire][1], rev_comp(flanks[dire][0]))
+        fq2sam(f"{indir}/{dire}/paired.fq", outfile, dire, chromsome, pos,
+                flanks[dire][1], rev_comp(flanks[dire][0]), trim_flanks)
 
-def fq2sam(infile, outfile, dir, chrom, pos, flank, flank_rev):
+def fq2sam(infile, outfile, dir, chrom, pos, flank, flank_rev, trim_flanks):
 ### Write fastq seq and phred score to sam file with hardcoded chrom pos and perfect map qual and trims read att positon from search flank
     with open(infile, "r") as infh, open(outfile, "a") as outfh:
         fq_lines = []
@@ -137,23 +138,36 @@ def fq2sam(infile, outfile, dir, chrom, pos, flank, flank_rev):
             fq_lines.append(line.rstrip().split()[0])
             if len(fq_lines) == 4:
                 count_2 += 1
-                end = search_for_flank_trim(fq_lines[1], flank, flank_rev, flank_len, flank_rev_len)
-                #print("Length of read before triming ", len(fq_lines[1]))
-                #print("Flank found at:", end)
-                if end is None:
-                    fq_lines = []
-                    continue
+                if trim_flanks:
+                    end = search_for_flank_trim(fq_lines[1], flank, flank_rev, flank_len, flank_rev_len)
+                    if end is None:
+                        fq_lines = []
+                        continue
+                    else:
+                        fq_lines[1] = fq_lines[1][:end]
+                        fq_lines[3] = fq_lines[3][:end]
+                        cigar = len(fq_lines[1])
+                        pos_2 = int(pos) + int(cigar)
+                        #print("Length of read after triming ", len(fq_lines[1]))
+                        sam_line = f"{fq_lines[0][1:]}\t0\t{chrom}\t{pos}\t255\t{cigar}M\t*\t0\t0\t{fq_lines[1]}\t{fq_lines[3]}\tUG:Z:{dir}\n"
+                        outfh.write(sam_line)
+                        fq_lines = []
+                        count += 1
                 else:
-                    fq_lines[1] = fq_lines[1][:end]
-                    fq_lines[3] = fq_lines[3][:end]
-                    cigar = len(fq_lines[1])
-                    pos_2 = int(pos) + int(cigar)
-                    #print("Length of read after triming ", len(fq_lines[1]))
-                    sam_line = f"{fq_lines[0][1:]}\t0\t{chrom}\t{pos}\t255\t{cigar}M\t*\t0\t0\t{fq_lines[1]}\t{fq_lines[3]}\tUG:Z:{dir}\n"
-                    outfh.write(sam_line)
-                    fq_lines = []
-                    count += 1
-
+                    end = "Starting"
+                    if end is None:
+                        fq_lines = []
+                        continue
+                    else:
+                        fq_lines[1] = fq_lines[1]#[:end]
+                        fq_lines[3] = fq_lines[3]#[:end]
+                        cigar = len(fq_lines[1])
+                        pos_2 = int(pos) + int(cigar)
+                        #print("Length of read after triming ", len(fq_lines[1]))
+                        sam_line = f"{fq_lines[0][1:]}\t0\t{chrom}\t{pos}\t255\t{cigar}M\t*\t0\t0\t{fq_lines[1]}\t{fq_lines[3]}\tUG:Z:{dir}\n"
+                        outfh.write(sam_line)
+                        fq_lines = []
+                        count += 1
         #print(flank_seq)
         print(f"found {count} reads of {count_2} for {dir}")
 

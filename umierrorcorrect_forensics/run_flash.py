@@ -6,6 +6,7 @@ import os
 import logging
 from umierrorcorrect.version import __version__
 
+
 def parseArgs():
     parser = argparse.ArgumentParser(description="Combines paired reads to one consensus read")
     parser.add_argument('-o', '--output_path', dest='output_path',
@@ -24,7 +25,35 @@ def parseArgs():
     return(args)
 
 
+def adapter_removal(read1, read2, num_threads, output_path):
+    '''
+    Removes default Illumina TrueSeq adapters from the reads, which helps
+    FLASH with with alignment.
+    '''
+    trimmed_read1 = os.path.join(output_path, 'trimmed_read1.fastq.gz')
+    trimmed_read2 = os.path.join(output_path, 'trimmed_read2.fastq.gz')
+    # Adapters from Froste
+    adapter1 = 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
+    adapter2 = 'CAAGCAGAAGACGGCATACGAGATNNNNNNGTGACTGGAGTTCAGACGTGTGCTCTTCCG'
+    # Adapters detected
+    # adapter1 = 'AGATCGGAAGAGCACACGTCTGAACTCCAGTNNNNNNNCAATTTCGTATGCCTCTTCTGCTTGA'
+    # adapter2 = 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGT'
+    subprocess.run(['AdapterRemoval',
+                    '--file1', read1,
+                    '--file2', read2,
+                    '--output1', trimmed_read1,
+                    '--output2', trimmed_read2,
+                    '--adapter1', adapter1,
+                    '--adapter2', adapter2,
+                    '--threads', num_threads,
+                    '--gzip'],
+                    check=True)
+    return trimmed_read1,trimmed_read2
+
+
 def run_flash(read1, read2, num_threads, output_path, log_path):
+    read1,read2 = adapter_removal(read1, read2, num_threads, output_path)
+
     curr_path = os.path.dirname(sys.argv[0])
     flash_path = os.path.join(curr_path, 'FLASH-lowercase-overhang')
     subprocess.run(['make', flash_path])
