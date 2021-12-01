@@ -1,13 +1,13 @@
+#!/usr/bin/env python3
 import argparse
 import sys
 import re
-import jellyfish as jf
 def parse_arg():
     parser = argparse.ArgumentParser(description = 'Converts FDStools tssv out put to a single sam format file')
     parser.add_argument("-i", "--infile", dest = "infolder", help = "Folder created by FDStools tssv")
     parser.add_argument("-o", "--outfile", dest = "outfile", help = "SAM file name to write too")
     parser.add_argument("-b", "--bed", dest = "bedfile", help = "BED file to get chromesome and strname from")
-    parser.add_argument("-l", "--library", dest = "lib", help = "BED file to get chromesome and strname from")
+    parser.add_argument("-l", "--library", dest = "lib", help = "Library file to get chromesome and strname from")
     args = parser.parse_args(sys.argv[1:])
     return args
 def rev_comp(seq):
@@ -77,13 +77,13 @@ def search_for_flank_trim(seq, flank, rev_flank,flank_len,flank_rev_len):
             subseq_rev = seq[base-flank_rev_len : base]
             #ham = levenshtein(subseq,flank)
             #ham_rev = levenshtein(subseq_rev,rev_flank)
-            ham = jf.levenshtein_distance(subseq,flank)
-            ham_rev = jf.levenshtein_distance(subseq_rev,rev_flank)
-            if ham <= 2:
+            lev = levenshtein(subseq,flank)
+            lev_rev = levenshtein(subseq_rev,rev_flank)
+            if lev <= 2:
                 #print('flank found ham',base,base - flank_len, base + flank_len , ham)
                 return base
                 break
-            elif ham_rev <= 2:
+            elif lev_rev <= 2:
                 #print('rev flank found ham',base,base - flank_len, base + flank_len , ham)
                 return base
                 break
