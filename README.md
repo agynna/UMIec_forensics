@@ -17,7 +17,7 @@ Example command to type STRs from paired ends:
 
 umierrorcorrect_forensics/run_umierrorcorrect_forensics.py -r1 data/15-2800M-10ng_S15_L001_R1_001.fastq.gz \
 -r2 data/15-2800M-10ng_S15_L001_R2_001.fastq.gz -p -o results -l data/ULTRALibrary.txt -b data/ULTRALibrary.bed -g data/reference_genome/hg38.fa -i data/ultra.ini
-
+## Usage
 Example command for single ends:
 
 umierrorcorrect_forensics/run_umierrorcorrect_forensics.py -r1 data/15-2800M-10ng_S15_L001_R1_001.fastq.gz \
