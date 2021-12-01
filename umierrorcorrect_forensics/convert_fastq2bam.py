@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import pysam
 import sys
 import os
@@ -28,7 +29,6 @@ def fastq2bam(infolder, outfile, bed_file, library_file, trim_flanks=True, num_t
     f2s.write_header(samfile, chromsomes)
     f2s.loop_fds_result(infolder, samfile, chromsomes, fq_dirs, pos, library_file, trim_flanks)
     logging.info('Converted fastq to SAM file: ' + infolder + ' to '+ samfile)
-
     # pysam.view(samfile, # Does not produce output for unknown reason.
     #             '--bam',
     #             '--output', outfile,

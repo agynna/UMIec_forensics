@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import subprocess
 import sys
@@ -25,8 +26,12 @@ def parseArgs():
                         help='Path to second FASTQ file, R2 if applicable')
     parser.add_argument('-l', '--library', dest='library_file',
                         help='Path to the Library file for TSSV, Required', required=True)
+    parser.add_argument('-b', '--bed', dest='bed_file',
+                        help='Path to the Library file for TSSV, Required', required=True)
     parser.add_argument('-i', '--ini', dest='ini_file',
                         help='Path to first FDStools ini file, required', required=True)
+    parser.add_argument('-g', '--reference', dest='reference_file',
+                        help='reference genome', required=True)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
                         help='Number of threads to run the program on. Default=%(default)s', default='1')
     parser.add_argument('-p', help='If fastq is paired', action='store_true')
@@ -80,7 +85,6 @@ def set_args_umierrorcorrect(args, read_name, bam_file, bed_file):
     args.bam_file = bam_file
     args.bed_file = bed_file
     args.sample_name = read_name
-    args.reference_file = 'data/reference_genome/hg38/hg38.fa'
     args.consensus_frequency_threshold = 0.5
     args.indel_frequency_threshold = 0.6
     args.position_threshold = 20
@@ -126,7 +130,7 @@ def main():
     # Assume for now that the BED position file has the same basename and lives
     # in the same dir as the library file.
     # Paired end reads are already trimmed before FLASH, so skip trimming here.
-    bed_file = os.path.splitext(args.library_file)[0] + '.bed'
+    bed_file = os.path.splitext(args.bed_file)[0] + '.bed'
     bam_file = os.path.join(output_path, read_name + '.bam')
     trim_flanks = not args.p
     bam_file = fastq2bam(output_path, bam_file, bed_file,
