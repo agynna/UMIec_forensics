@@ -8,10 +8,10 @@ Pipeline for analyzing barcoded STR markers sequencing data with Unique molecula
 ## Installation
 Prior to running one most install [AdaterRemoval](https://github.com/MikkelSchubert/adapterremoval) and [Samtools](https://github.com/samtools/samtools) and make (https://www.gnu.org/software/make/)
 The pipeline also makes use of specialzied version of [FLASH](https://academic.oup.com/bioinformatics/article/27/21/2957/217265) made by [Jerrythafasta](https://github.com/Jerrythafast): [FLASH-lowercase-overhang](https://github.com/Jerrythafast/FLASH-lowercase-overhang)
-Then umierrorcorrect_forensics can be installed by running:
-cd umierrorcorrect_forensics
-pip install .
-./setup_flash.py
+Then umierrorcorrect_forensics can be installed by running:\n
+cd umierrorcorrect_forensics\n
+pip install .\n
+./setup_flash.py\n
 
 ## Usages
 
