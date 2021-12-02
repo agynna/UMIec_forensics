@@ -76,7 +76,7 @@ def run_tssv(fastq_file, library_file, num_threads, output_path, plot_qc = False
         fastq_istempfile = False
 
     tssv_run = subprocess.run(['fdstools', 'tssv',
-                                #'--dir', output_path, # Output dir for verbose output
+                                '--dir', output_path, # Output dir for verbose output
                                 '--indel-score', str(2),
                                 '--mismatches', str(0.1),
                                 '--num-threads', num_threads,
