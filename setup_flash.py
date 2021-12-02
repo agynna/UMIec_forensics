@@ -13,7 +13,7 @@ def get_virtualenv_path():
     if 'conda' in sys.prefix:
         return sys.prefix + "/bin/"
 
-    return "/usr/bin/"
+    return "/usr/local/bin/"
 def copy_and_move_software():
     """Used the subprocess module to compile/install the C software."""
     flash_path = os.path.dirname(os.path.abspath("./"))

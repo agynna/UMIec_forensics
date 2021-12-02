@@ -1,7 +1,7 @@
 
+[My image](FrosteS.github.com/FrosteS/umierrorcorrect_forensics/Umierrorcorrect_forensics.PNG)
 
-
-# umierrorcorrect
+# UMIerrorcorrect forensics
 
 Pipeline for analyzing barcoded STR markers sequencing data with Unique molecular identifiers (UMI). This pipeline combines correction of sequencing errors using umierrorcorrect with typing of forensic genetic markers (STRs) with FDStools. Output is identical to the output of FDStools.
 
