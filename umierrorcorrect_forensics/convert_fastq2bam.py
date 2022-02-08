@@ -35,7 +35,7 @@ def fastq2bam(infolder, outfile, bed_file, library_file, trim_flanks=True, num_t
     #             )
     with open(outfile, 'w') as of:
         subprocess.run(['samtools', 'view',
-                        '--bam',
+                        '-b',
                         samfile],
                         stdout=of,
                         check=True)
