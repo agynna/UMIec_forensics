@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from pydoc import describe
 import subprocess
 import sys
 import os
@@ -15,6 +16,7 @@ from umierrorcorrect.get_consensus_statistics import run_get_consensus_statistic
 from run_fdstools import run_fdstools
 from convert_fastq2bam import fastq2bam
 from convert_bam2fastq import bam2fastq
+from uncollapse_reads import uncollapse_reads
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="TSSV seperation of Simsenseq sequencing of forensics markers ")
@@ -34,6 +36,8 @@ def parseArgs():
                         help='reference genome', required=True)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
                         help='Number of threads to run the program on. Default=%(default)s', default='1')
+    parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
+                        help='Provide uncollapsed FDStools output, useful for diversity evaluation', action='store_true')
     parser.add_argument('-p', help='If fastq is paired', action='store_true')
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
@@ -157,6 +161,15 @@ def main():
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
     bam2fastq(filtered_reads_file, consensus_fastq_file)
     run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path)
+    logging.info('Finished generating consensus sequences!')
+
+    # If desired, the pipeline can output uncollapsed reads files that can be used for diagnosis. 
+    if args.uncollapse: 
+        logging.info("Generating uncollapsed read files (-u option activated)...")
+        uncollapsed_path = os.path.join(output_path, read_name + '_uncollapsed_consensus_reads.fq')
+        uncollapse_reads(consensus_fastq_file, uncollapsed_path)
+        run_fdstools(uncollapsed_path, args.library_file, args.ini_file, output_path, verbose=False)
+        logging.info("Finished generating uncollapsed read files! ")
 
 
 if __name__ == '__main__':

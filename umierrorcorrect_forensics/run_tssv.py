@@ -84,10 +84,10 @@ def run_tssv(fastq_file, library_file, num_threads, output_path, plot_qc = False
                                 fastq_file],           # Input file
                                 stdout=subprocess.DEVNULL
                               )
-    if fastq_istempfile:
-        os.remove(fastq_file)
     if tssv_run.returncode == 0:
         logging.info('TSSV finished successfully')
+        if fastq_istempfile:
+            os.remove(fastq_file)
     else:
         tssv_run.check_returncode()
 

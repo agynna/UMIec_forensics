@@ -22,14 +22,18 @@ def parseArgs():
     logging.info('Starting FDStools')
     return(args)
 
-def customize_ini_file(old_ini_file, output_path):
+def customize_ini_file(old_ini_file, output_path, verbose=True):
     """
     The ini file contains the path where tssv puts its output. To customize its
     position, we must rewrite the ini file for each sample.
     """
     new_ini_file = os.path.join(output_path, "ultra_custom.ini")
     default_fds_output_path = "fdstools_pipeline_results"
-    new_fds_output_path = os.path.join(output_path, 'fdstools_results_afterUMIerrorcorrect')
+    if verbose:
+        new_fds_output_path = os.path.join(output_path, 'fdstools_results_afterUMIerrorcorrect')
+    else: 
+        new_fds_output_path = ""
+
     with open(old_ini_file, "r") as source:
         lines = source.readlines()
     with open(new_ini_file, "w") as target:
@@ -39,8 +43,8 @@ def customize_ini_file(old_ini_file, output_path):
                                 line))
     return new_ini_file
 
-def run_fdstools(fastq_file, library_file, ini_file, output_path):
-    new_ini_file = customize_ini_file(ini_file, output_path)
+def run_fdstools(fastq_file, library_file, ini_file, output_path, verbose=True):
+    new_ini_file = customize_ini_file(ini_file, output_path, verbose)
     subprocess.run(['fdstools', 'pipeline',
                     new_ini_file,
                     '-l', library_file,
