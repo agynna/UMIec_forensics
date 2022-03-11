@@ -4,7 +4,7 @@ import random
 import sys
 import gzip as gz
 def parseArgs():
-    parser = argparse.ArgumentParser(description="TSSV seperation of Simsenseq sequencing of forensics markers ")
+    parser = argparse.ArgumentParser(description="To down sample the number of reads from a SimSenSeq experiment. Useful for evaluation.")
     parser.add_argument('-o', '--output_path', dest='output_path',
                         help='Path to the output directory, required', required=True)
     parser.add_argument('-r1', '--read1', dest='read1',
@@ -14,7 +14,7 @@ def parseArgs():
     parser.add_argument('-f', '--fraction', dest='fraction',
                         help='fraction of reads to keep', required=True)
     parser.add_argument('-s', '--seed', dest='seed',
-                        help='for reproducibpility', default = 1)
+                        help='for reproducability', default = 1)
     args = parser.parse_args(sys.argv[1:])
     return(args)
 
