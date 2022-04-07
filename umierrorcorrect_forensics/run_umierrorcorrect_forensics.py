@@ -35,7 +35,7 @@ def parseArgs():
     parser.add_argument('-g', '--reference', dest='reference_file',
                         help='reference genome', required=True)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
-                        help='Number of threads to run the program on. Default=%(default)s', default='1')
+                        help='Number of threads to run the program on. Default=%(default)s', default='2')
     parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
                         help='Provide uncollapsed FDStools output, useful for diversity evaluation', action='store_true')
     parser.add_argument('-p', help='If fastq is paired', action='store_true')
