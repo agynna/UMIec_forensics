@@ -43,10 +43,12 @@ def adapter_removal(read1, read2, num_threads, output_path):
                     '--file2', read2,
                     '--output1', trimmed_read1,
                     '--output2', trimmed_read2,
+                    '--settings', os.path.join(output_path, 'settings.txt'), 
+                    '--singleton', os.path.join(output_path, 'single.fasta.gz'), 
+                    '--discarded', os.path.join(output_path, 'discarded.fasta.gz'),
                     '--adapter1', adapter1,
                     '--adapter2', adapter2,
-                    '--threads', num_threads,
-                    '--gzip'],
+                    '--threads', num_threads],
                     check=True)
     return trimmed_read1,trimmed_read2
 
