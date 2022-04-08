@@ -12,7 +12,7 @@ install_requires = [#"fdstools>=2.0.0", needs TSSV v2.1.1 which is not yet in Py
                     "scipy",
                     "pandas",
                     "seaborn",
-                    "umierrorcorrect"]
+                    "umierrorcorrect==0.22"]
 
 setup(name='umierrorcorrect_forensics',
       description='UMIerrorcorrect Forensics',

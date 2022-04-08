@@ -151,11 +151,12 @@ def main():
     filter_bam(consensus_reads_file, filtered_reads_file, consensus_cutoff)
 
     # Calculate UMIerrorcorrect statistics
-    hist_file = os.path.join(output_path, read_name + '.hist')
+    stats_file = os.path.join(output_path, read_name + '.hist')
     run_get_consensus_statistics(output_path,
                                  consensus_reads_file,
-                                 hist_file,
-                                 samplename=read_name)
+                                 stats_file,
+                                 True,
+                                 read_name)
 
     # Convert to Fastq file and run FDStools
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')

@@ -80,17 +80,19 @@ def make_fdstools_library(library_file):
             l = f.readline()
     return lib
 
-def trim_sequences(df_markers, library_file):
+def trim_sequences(df_longseqs, library_file):
     '''
     Removes the flanks from fastq sequences as specified in library file.  
     This calls the FDStools TSSV internal function to do that. This is a bit 
     hacky, and the FDStools manual explicitly tells you not to do that. 
     Use with caution. 
+    Takes DataFrame with column "sequence", returns identical DF with that
+    column trimmed. 
     '''
     indel_score = 2
     tssv_library = make_fdstools_library(library_file)
     trimmed_seqs = []
-    for seq in df_markers["sequence"]:
+    for seq in df_longseqs["sequence"]:
         list_of_markers_trimmed = tssv.process_sequence(tssv_library, indel_score, False, seq)
         # Extract sequence from tssv return structure
         trimmed_seq = ""
@@ -101,8 +103,9 @@ def trim_sequences(df_markers, library_file):
                 trimmed_seq = record[3]
         # For some reason, trimmed seqs come out one nt too long. 
         trimmed_seqs.append(trimmed_seq[0:-1])
-    df_markers["sequence"] = trimmed_seqs
-    return df_markers
+    df_out = df_longseqs
+    df_out["sequence"] = trimmed_seqs
+    return df_out
 
 def create_histo_loop(folder, outfolder=None, csvfile=None):
     folder = folder + "/"
@@ -116,7 +119,7 @@ def create_histo_loop(folder, outfolder=None, csvfile=None):
             print(f"{folder}/{marker}/", ", has ", str(len(family_sizes)), " barcodes. ")
             df_marker_families["marker"] = marker
             if library_file:
-                df_marker_families = trim_sequences(marker, df_marker_families, library_file)
+                df_marker_families = trim_sequences(df_marker_families, library_file)
             df_families = pd.concat([df_families, df_marker_families])
             
             sns.histplot(family_sizes, ax = ax, bins= 50)
