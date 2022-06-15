@@ -16,7 +16,9 @@ from umierrorcorrect.get_consensus_statistics import run_get_consensus_statistic
 from run_fdstools import run_fdstools
 from convert_fastq2bam import fastq2bam
 from convert_bam2fastq import bam2fastq
-from uncollapse_reads import uncollapse_reads
+from tools.uncollapse_reads import uncollapse_reads
+from tools.downsample import downsample_reads
+
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="TSSV seperation of Simsenseq sequencing of forensics markers ")
@@ -38,6 +40,10 @@ def parseArgs():
                         help='Number of threads to run the program on. Default=%(default)s', default='2')
     parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
                         help='Provide uncollapsed FDStools output, useful for diversity evaluation', action='store_true')
+    parser.add_argument('--downsample', dest='downsample', type=float,
+                        help='Downsample the number of reads by this fraction. Useful for evaluation.')
+    parser.add_argument('--sample_seed', dest='seed', type=int,
+                        help='Seed for downsampling. For reproducability.')
     parser.add_argument('-p', help='If fastq is paired', action='store_true')
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
@@ -99,31 +105,53 @@ def set_args_umierrorcorrect(args, read_name, bam_file, bed_file):
     return args
 
 def main():
+    # If asked to downsample reads, do that and save into temp folder. 
+    if args.downsample: 
+        logging.info('Downsampling input reads by factor ' + str(args.downsample))
+        tmp_dir = tempfile.mkdtemp()
+        if args.p: 
+            read1, read2 = downsample_reads(frac=args.downsample, 
+                                            read1=args.read1, 
+                                            read2=args.read2, 
+                                            output_path=tmp_dir, 
+                                            seed = args.seed)
+        else: 
+            read1 = downsample_reads(frac=args.downsample, 
+                                     read1=args.read1, 
+                                      output_path=tmp_dir,
+                                      seed = args.seed)
+        logging.info('Selected reads saved in ' + read1 + ' etc.')
+    else: 
+        read1 = args.read1
+        read2 = args.read2
+
+
     # If paired ends, combine reads into single reads using FLASH
     if args.p:
-        read_name = common_part_of_read_name(os.path.basename(args.read1),
-                                             os.path.basename(args.read2))
+        read_name = common_part_of_read_name(os.path.basename(read1),
+                                             os.path.basename(read2))
         output_path = make_outputdir(args.output_path, read_name)
-        tmp_dir = tempfile.mkdtemp()
-        merged_reads_file = run_flash(args.read1,
-                                        args.read2,
-                                        args.num_threads,
-                                        tmp_dir,
-                                        output_path)
+        if not(args.downsample):
+            tmp_dir = tempfile.mkdtemp()
+        merged_reads_file = run_flash(read1,
+                                      read2,
+                                      args.num_threads,
+                                      tmp_dir,
+                                      output_path)
         args_preprocessing = set_args_preprocessing(args, read_name,
                                                     output_path,
                                                     tmpdir=tmp_dir,
                                                     reads_file=merged_reads_file)
     else:
-        read_name = os.path.basename(args.read1.split('.',1)[0])
+        read_name = os.path.basename(read1.split('.',1)[0])
         output_path = make_outputdir(args.output_path, read_name)
         args_preprocessing = set_args_preprocessing(args, read_name,
                                                     output_path)
 
-    # Preprocessing
+    # Preprocessing using the UMIec preprocessor 
     (fastq_file, nseqs) = run_preprocessing(args_preprocessing)
     fastq_file = fastq_file[0]
-    if args.p:
+    if args.p or args.downsample:
         shutil.rmtree(tmp_dir)
 
     # Alignment of reads to markers by TSSV
