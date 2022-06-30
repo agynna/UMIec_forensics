@@ -6,7 +6,7 @@ import sys
 import subprocess
 
 
-install_requires = [#"fdstools>=2.0.0", needs TSSV v2.1.1 which is not yet in PyPI. Get it from https://github.com/Jerrythafast/FDSTools.
+install_requires = ["fdstools>=2.0.1",
                     "matplotlib",
                     "pysam>=0.8.4",
                     "scipy",
@@ -37,8 +37,8 @@ setup(name='umierrorcorrect_forensics',
                "umierrorcorrect_forensics/fastq2sam.py",
                "umierrorcorrect_forensics/convert_fastq2bam.py",
                "umierrorcorrect_forensics/convert_bam2fastq.py",
-               "umierrorcorrect_forensics/uncollapse_reads.py",
-               "umierrorcorrect_forensics/tools/down_sample.py",
+               "umierrorcorrect_forensics/tools/uncollapse_reads.py",
+               "umierrorcorrect_forensics/tools/downsample.py",
                "umierrorcorrect_forensics/tools/barcode_diversity.py",
                "umierrorcorrect_forensics/tools/get_stutters.py"],
       zip_safe=False)

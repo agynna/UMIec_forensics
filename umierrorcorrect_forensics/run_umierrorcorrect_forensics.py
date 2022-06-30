@@ -16,8 +16,8 @@ from umierrorcorrect.get_consensus_statistics import run_get_consensus_statistic
 from run_fdstools import run_fdstools
 from convert_fastq2bam import fastq2bam
 from convert_bam2fastq import bam2fastq
-from tools.uncollapse_reads import uncollapse_reads
-from tools.downsample import downsample_reads
+from umierrorcorrect_forensics.tools.uncollapse_reads import uncollapse_reads
+from umierrorcorrect_forensics.tools.downsample import downsample_reads
 
 
 def parseArgs():
@@ -171,6 +171,9 @@ def main():
 
     # Run UMIerrorcorrect
     args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file, bed_file)
+    print(read_name)
+    print(bam_file)
+    print(bed_file)
     run_umi_errorcorrect(args_umierrrorcorrect)
 
     consensus_reads_file = os.path.join(output_path, read_name + '_consensus_reads.bam')

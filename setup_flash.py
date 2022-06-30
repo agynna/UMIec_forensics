@@ -20,12 +20,11 @@ def copy_and_move_software():
     flash_path = os.path.join(flash_path , "umierrorcorrect_forensics/umierrorcorrect_forensics/FLASH-lowercase-overhang/")
     venv = get_virtualenv_path()
     # compile the software
-    cmd = "cp -R {} {}".format(flash_path,venv)
+    subprocess.check_call("make", cwd=flash_path)
+    cmd = "cp -R {} {}".format(os.path.join(flash_path,"flash"),venv)
     print(flash_path)
     print(venv)
     print(cmd)
     subprocess.check_call(cmd, shell=True)
 
-    # install the software (into the virtualenv bin dir if present)
-    #subprocess.check_call('make install', cwd=src_path, shell=True
 copy_and_move_software()

@@ -58,7 +58,6 @@ def run_flash(read1, read2, num_threads, output_path, log_path):
 
     curr_path = os.path.dirname(sys.argv[0])
     flash_path = os.path.join(curr_path, 'FLASH-lowercase-overhang')
-    subprocess.run(['make', flash_path])
 
     read_filename = os.path.basename(read1)
     read_name = read_filename.split('.',1)[0]
@@ -66,7 +65,7 @@ def run_flash(read1, read2, num_threads, output_path, log_path):
     stdout_file = os.path.join(log_path, 'flash_out.txt')
     with open(stdout_file, 'w') as f:
         # Make sure to turn lowercase overhang option -l on!
-        flash_run = subprocess.run([os.path.join(flash_path,'flash'),
+        flash_run = subprocess.run(['flash',
                                     read1,
                                     read2,
                                     '-t', num_threads,
