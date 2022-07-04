@@ -6,7 +6,7 @@
 Pipeline for analyzing barcoded STR markers sequencing data with Unique molecular identifiers (UMI). This pipeline combines correction of sequencing errors using umierrorcorrect with typing of forensic genetic markers (STRs) with FDStools. Output is identical to the output of FDStools.
 
 ## Installation
-Prior to running one must install [AdapterRemoval](https://github.com/MikkelSchubert/adapterremoval), [Samtools](https://github.com/samtools/samtools) and make (https://www.gnu.org/software/make/)
+Prior to running one must install [AdapterRemoval](https://github.com/MikkelSchubert/adapterremoval) and make (https://www.gnu.org/software/make/)
 The pipeline also makes use of specialzied version of [FLASH](https://academic.oup.com/bioinformatics/article/27/21/2957/217265) made by [Jerrythafasta](https://github.com/Jerrythafast): [FLASH-lowercase-overhang](https://github.com/Jerrythafast/FLASH-lowercase-overhang)
 Then umierrorcorrect_forensics can be installed by running:\
 ```

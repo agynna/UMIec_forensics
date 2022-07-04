@@ -8,7 +8,7 @@ import subprocess
 
 install_requires = ["fdstools>=2.0.1",
                     "matplotlib",
-                    "pysam>=0.8.4",
+                    "pysam>=0.19.1",
                     "scipy",
                     "pandas",
                     "seaborn",

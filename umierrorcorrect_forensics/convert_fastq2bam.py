@@ -3,7 +3,6 @@ import pysam
 import sys
 import os
 import logging
-import subprocess
 import argparse
 import tempfile
 import fastq2sam as f2s
@@ -25,31 +24,21 @@ def parseArgs():
 
 def fastq2bam(infolder, outfile, bed_file, library_file, trim_flanks=True, num_threads=1):
     [_, samfile] = tempfile.mkstemp(suffix='.sam', text=True)
-    chromsomes, pos, fq_dirs = f2s.get_chr_str(bed_file)
-    f2s.write_header(samfile, chromsomes)
-    f2s.loop_fds_result(infolder, samfile, chromsomes, fq_dirs, pos, library_file, trim_flanks)
+    chromosomes, pos, fq_dirs = f2s.get_chr_str(bed_file)
+    f2s.write_header(samfile, chromosomes)
+    f2s.loop_fds_result(infolder, samfile, chromosomes, fq_dirs, pos, library_file, trim_flanks)
     logging.info('Converted fastq to SAM file: ' + infolder + ' to '+ samfile)
-    # pysam.view(samfile, # Does not produce output for unknown reason.
-    #             '--bam',
-    #             '--output', outfile,
-    #             )
-    with open(outfile, 'w') as of:
-        subprocess.run(['samtools', 'view',
-                        '-b',
-                        samfile],
-                        stdout=of,
-                        check=True)
+    pysam.view('-b', 
+               '--output', outfile, 
+               samfile, 
+               catch_stdout=False)
     logging.info('Compressed SAM to BAM file: ' + outfile)
     os.remove(samfile)
 
     outfile_sorted = outfile + '_sorted'
-    # pysam.sort(outfile, # Fails with Typeerror
-    #             '-o', outfile_sorted,
-    #             '-@', num_threads)
-    subprocess.run(['samtools', 'sort',
-                    outfile,
-                    '-o', outfile_sorted],
-                    check=True)
+    pysam.sort('-o', outfile_sorted,
+               '-@', str(num_threads), 
+               outfile)
     logging.info('Sorted BAM file: ' + outfile_sorted)
 
     pysam.index(outfile_sorted)

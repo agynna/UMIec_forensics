@@ -131,3 +131,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+umierrorcorrect_forensics/umierrorcorrect_forensics.code-workspace
+todo.txt

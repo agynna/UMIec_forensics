@@ -191,7 +191,7 @@ def main():
 
     # Convert to Fastq file and run FDStools
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
-    bam2fastq(filtered_reads_file, consensus_fastq_file)
+    bam2fastq(filtered_reads_file, consensus_fastq_file, num_threads=args.num_threads)
     run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path)
     logging.info('Finished generating consensus sequences!')
 

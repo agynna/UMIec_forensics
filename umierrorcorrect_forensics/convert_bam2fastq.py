@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import pysam
-import os
 import sys
 import logging
-import subprocess
 import argparse
+
 def parseArgs():
     parser = argparse.ArgumentParser(description="Runs full FDStools pipeline")
     parser.add_argument('-o', '--output_path', dest='output_path',
@@ -16,15 +15,11 @@ def parseArgs():
     logging.info('Starting convert bam to fastq')
     return(args)
 
-def bam2fastq(infile, outfile):
-    with open(outfile, 'w') as of:
-        subprocess.run(['samtools', 'fastq',
-                        infile],
-                        stdout=of,
-                        check=True)
-    # pysam.fastq(infile,
-    #             '-o', outfile,
-    #             catch_stdout=False)
+def bam2fastq(infile, outfile, num_threads=1):
+    pysam.fastq('-0', outfile,
+                '-@', str(num_threads),
+                infile,
+                catch_stdout=False)
 
 def main(args):
     bam2fastq(args.bam_file, args.output_path)

@@ -4,8 +4,6 @@ import subprocess
 import sys
 import os
 import logging
-from umierrorcorrect.version import __version__
-
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="Combines paired reads to one consensus read")
@@ -55,10 +53,6 @@ def adapter_removal(read1, read2, num_threads, output_path):
 
 def run_flash(read1, read2, num_threads, output_path, log_path):
     read1,read2 = adapter_removal(read1, read2, num_threads, output_path)
-
-    curr_path = os.path.dirname(sys.argv[0])
-    flash_path = os.path.join(curr_path, 'FLASH-lowercase-overhang')
-
     read_filename = os.path.basename(read1)
     read_name = read_filename.split('.',1)[0]
 
