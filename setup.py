@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
 from setuptools import setup
 from setuptools.command.install import install
-import os
-import sys
-import subprocess
-
 
 install_requires = ["fdstools>=2.0.1",
-                    "matplotlib",
-                    "pysam>=0.19.1",
-                    "scipy",
-                    "pandas",
-                    "seaborn",
-                    "umierrorcorrect==0.22"]
+                    "umierrorcorrect==0.22",
+                    "pysam>=0.19.1"]
 
 setup(name='umierrorcorrect_forensics',
       description='UMIerrorcorrect Forensics',

@@ -5,7 +5,6 @@ import sys
 import os
 import logging
 import re
-from umierrorcorrect.version import __version__
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="Runs full FDStools pipeline")

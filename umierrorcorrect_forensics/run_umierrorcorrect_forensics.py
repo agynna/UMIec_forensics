@@ -36,8 +36,14 @@ def parseArgs():
                         help='Path to first FDStools ini file, required', required=True)
     parser.add_argument('-g', '--reference', dest='reference_file',
                         help='reference genome', required=True)
+    parser.add_argument('-c', '--consensus_method', dest='consensus_method',
+                        help="Method for consensus generation. One of 'most_common', 'position' or 'MSA'. \
+                            [default = %(default)s]", default="most_common")
+    parser.add_argument('-cons_freq', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
+                        help="Minimum percent of the majority sequence (or base) consensus to be called. \
+                            Only for 'position' and 'most_common' methods. [default = %(default)s]", default=60.0)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
-                        help='Number of threads to run the program on. Default=%(default)s', default='2')
+                        help='Number of threads to run the program on. [default=%(default)s]', default='2')
     parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
                         help='Provide uncollapsed FDStools output, useful for diversity evaluation', action='store_true')
     parser.add_argument('--downsample', dest='downsample', type=float,
@@ -171,9 +177,6 @@ def main():
 
     # Run UMIerrorcorrect
     args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file, bed_file)
-    print(read_name)
-    print(bam_file)
-    print(bed_file)
     run_umi_errorcorrect(args_umierrrorcorrect)
 
     consensus_reads_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
