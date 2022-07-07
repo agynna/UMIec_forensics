@@ -40,6 +40,8 @@ def parseArgs():
                         help='Number of threads to run the program on. Default=%(default)s', default='2')
     parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
                         help='Provide uncollapsed FDStools output, useful for diversity evaluation', action='store_true')
+    parser.add_argument('--qcplots', dest='qcplots', 
+                        help='Save qc plots and preumi.csv file. (requires Pandas, Matplotlib & Seaborn)', action='store_true')
     parser.add_argument('--downsample', dest='downsample', type=float,
                         help='Downsample the number of reads by this fraction. Useful for evaluation.')
     parser.add_argument('--sample_seed', dest='seed', type=int,
@@ -143,7 +145,7 @@ def main():
                                                     tmpdir=tmp_dir,
                                                     reads_file=merged_reads_file)
     else:
-        read_name = os.path.basename(read1.split('.',1)[0])
+        read_name = os.path.basename(read1).split('.',1)[0]
         output_path = make_outputdir(args.output_path, read_name)
         args_preprocessing = set_args_preprocessing(args, read_name,
                                                     output_path)
@@ -155,8 +157,7 @@ def main():
         shutil.rmtree(tmp_dir)
 
     # Alignment of reads to markers by TSSV
-    plot_qc_stats = True # Requires pandas, seaborn & matplotlib.
-    run_tssv(fastq_file, args.library_file, args.num_threads, output_path, plot_qc_stats)
+    run_tssv(fastq_file, args.library_file, args.num_threads, output_path, args.qcplots)
 
     # Convert to fastq data to BAM file
     # Assume for now that the BED position file has the same basename and lives

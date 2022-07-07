@@ -48,7 +48,7 @@ def qc_plot_alignment(tssv_folder, out_folder):
                           stat_df["unique_seqs"]["unrecognised reads"],
                           stat_df["tPaired"].sum()]
                     )
-    ax.set(xlabel='Marker', ylabel='Reads')
+    ax.set(xlabel='Classification', ylabel='Reads')
     fig = ax.get_figure()
     plt.tight_layout()
     fig.savefig(out_folder + "/total_reads.png")

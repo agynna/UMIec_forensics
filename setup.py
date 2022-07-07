@@ -7,11 +7,7 @@ import subprocess
 
 
 install_requires = ["fdstools>=2.0.1",
-                    "matplotlib",
                     "pysam>=0.19.1",
-                    "scipy",
-                    "pandas",
-                    "seaborn",
                     "umierrorcorrect==0.22"]
 
 setup(name='umierrorcorrect_forensics',
