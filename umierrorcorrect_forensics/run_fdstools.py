@@ -29,7 +29,7 @@ def customize_ini_file(old_ini_file, output_path, verbose=True):
     new_ini_file = os.path.join(output_path, "ultra_custom.ini")
     default_fds_output_path = "fdstools_pipeline_results"
     if verbose:
-        new_fds_output_path = os.path.join(output_path, 'fdstools_results_afterUMIerrorcorrect')
+        new_fds_output_path = os.path.join(output_path, 'fdstools_output')
     else: 
         new_fds_output_path = ""
 

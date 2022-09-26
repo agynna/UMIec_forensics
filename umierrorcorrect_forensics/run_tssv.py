@@ -67,7 +67,7 @@ def run_tssv(fastq_file, library_file, num_threads, output_path, plot_qc = False
                                      )
 
         if gzip_run.returncode == 0:
-            logging.info('Unzipped fastq file')
+            logging.info('Unzipped fastq.gz file')
         else:
             gzip_run.check_returncode()
         fastq_file = unzipped_fastq

@@ -35,15 +35,15 @@ def fastq2bam(infolder, outfile, bed_file, library_file, trim_flanks=True, num_t
     logging.info('Compressed SAM to BAM file: ' + outfile)
     os.remove(samfile)
 
-    outfile_sorted = outfile + '_sorted'
-    pysam.sort('-o', outfile_sorted,
+    # outfile_sorted = outfile + '_sorted'
+    pysam.sort('-o', outfile,
                '-@', str(num_threads), 
                outfile)
-    logging.info('Sorted BAM file: ' + outfile_sorted)
-
-    pysam.index(outfile_sorted)
+    logging.info('Sorted BAM file: ' + outfile)
+    
+    pysam.index(outfile)
     logging.info('Indexed BAM file. Fastq to BAM file conversion complete.')
-    return outfile_sorted
+    return outfile
 
 def main(args):
     fastq2bam(args.infolder, args.outfile, args.bed_file, args.lib)

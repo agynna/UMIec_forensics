@@ -29,19 +29,24 @@ def parseArgs():
     parser.add_argument('-r2', '--read2', dest='read2',
                         help='Path to second FASTQ file, R2 if applicable')
     parser.add_argument('-l', '--library', dest='library_file',
-                        help='Path to the Library file for TSSV, Required', required=True)
+                        help='Path to the library file for FDStools, required', required=True)
     parser.add_argument('-b', '--bed', dest='bed_file',
-                        help='Path to the Library file for TSSV, Required', required=True)
+                        help='Path to the marker definition file for TSSV, required', required=True)
     parser.add_argument('-i', '--ini', dest='ini_file',
                         help='Path to first FDStools ini file, required', required=True)
     parser.add_argument('-g', '--reference', dest='reference_file',
                         help='reference genome', required=True)
+    parser.add_argument('-p', help='If fastq is paired', action='store_true')                    
     parser.add_argument('-c', '--consensus_method', dest='consensus_method',
                         help="Method for consensus generation. One of 'most_common', 'position' or 'MSA'. \
                             [default = %(default)s]", default="most_common")
     parser.add_argument('-cons_freq', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
-                        help="Minimum percent of the majority sequence (or base) consensus to be called. \
-                            Only for 'position' and 'most_common' methods. [default = %(default)s]", default=60.0)
+                        help="Minimum proportion of the majority sequence (or base) for consensus to be called. \
+                            Only for 'position' and 'most_common' methods. [default = %(default)s]", default=0.5)
+    parser.add_argument('--filter_model', dest='filter_model_path', 
+                        help='Path to model for filtering UMI families. No filtering takes place if unset.')
+    parser.add_argument('--filter_th', dest='filter_threshold', 
+                        help='Probability threshold for the filtering model. [default=%(default)s]', default=0.5)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
                         help='Number of threads to run the program on. [default=%(default)s]', default='2')
     parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
@@ -50,24 +55,30 @@ def parseArgs():
                         help='Downsample the number of reads by this fraction. Useful for evaluation.')
     parser.add_argument('--sample_seed', dest='seed', type=int,
                         help='Seed for downsampling. For reproducability.')
-    parser.add_argument('-p', help='If fastq is paired', action='store_true')
+    parser.add_argument('--keep', dest='keep_large_files', help='Keep large files.', action='store_true')
+    
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
     logging.info('Starting UMIerrorcorrect forensics')
     return(args)
 
-def common_part_of_read_name(r1, r2):
+def common_read_name(r1, r2):
     """
-    Return the longest common part of file names, beginning from the start. If
-    they are all different, return the first file name instead.
+    Return the longest common part of read file names. First tries 
+    to use the part before the first underscore. If those aren't 
+    identical, it will use the longest common part from the start. 
+    If the names are all different, return the first file name instead.
     """
-    i = len(r2)
-    while not r1.startswith(r2[0:i]):
-        i = i-1
-    if i > 0:
-        common_part = r1[0:i]
-    else:
-        common_part = r1
+    if r1.split("_")[0] == r2.split("_")[0]:
+        common_part = r1.split("_")[0]
+    else: 
+        i = len(r2)
+        while not r1.startswith(r2[0:i]):
+            i = i-1
+        if i > 0:
+            common_part = r1[0:i]
+        else:
+            common_part = r1
     return common_part
 
 def make_outputdir(output_path, read_name):
@@ -89,7 +100,6 @@ def set_args_preprocessing(args, read_name, output_path, **kwargs):
     if reads_file:
         args.read1 = reads_file
     args.output_path = output_path
-    read_filename = os.path.basename(args.read1)
     args.sample_name = read_name
     args.mode = 'single'   # We do not use the double end read feature of umierrorcorrect
     args.gziptool = 'gzip'
@@ -97,17 +107,18 @@ def set_args_preprocessing(args, read_name, output_path, **kwargs):
     args.spacer_length = 16
     return args
 
-def set_args_umierrorcorrect(args, read_name, bam_file, bed_file):
+def set_args_umierrorcorrect(args, read_name, bam_file):
     args.bam_file = bam_file
-    args.bed_file = bed_file
     args.sample_name = read_name
-    args.consensus_frequency_threshold = 0.5
     args.indel_frequency_threshold = 0.6
     args.position_threshold = 20
     args.edit_distance_threshold = 1
     args.regions_from_bed = True
     args.include_singletons = False
     args.remove_large_files = False
+    if args.filter_model_path:
+        args.output_json = True 
+        args.consensus_frequency_threshold = 0.1
     return args
 
 def main():
@@ -134,8 +145,8 @@ def main():
 
     # If paired ends, combine reads into single reads using FLASH
     if args.p:
-        read_name = common_part_of_read_name(os.path.basename(read1),
-                                             os.path.basename(read2))
+        read_name = common_read_name(os.path.basename(read1),
+                                     os.path.basename(read2))
         output_path = make_outputdir(args.output_path, read_name)
         if not(args.downsample):
             tmp_dir = tempfile.mkdtemp()
@@ -158,26 +169,35 @@ def main():
     (fastq_file, nseqs) = run_preprocessing(args_preprocessing)
     fastq_file = fastq_file[0]
     if args.p or args.downsample:
-        shutil.rmtree(tmp_dir)
+        if args.keep_large_files:
+            shutil.copytree(tmp_dir, os.path.join(output_path, "preprocessing_output"))
+        else: 
+            shutil.rmtree(tmp_dir)
 
     # Alignment of reads to markers by TSSV
-    plot_qc_stats = True # Requires pandas, seaborn & matplotlib.
-    run_tssv(fastq_file, args.library_file, args.num_threads, output_path, plot_qc_stats)
+    plot_qc_stats = False # Requires pandas, seaborn & matplotlib.
+    tssv_output_path = os.path.join(output_path, "tssv_output")
+    run_tssv(fastq_file, args.library_file, args.num_threads, tssv_output_path, plot_qc_stats)
 
     # Convert to fastq data to BAM file
-    # Assume for now that the BED position file has the same basename and lives
-    # in the same dir as the library file.
-    # Paired end reads are already trimmed before FLASH, so skip trimming here.
-    bed_file = os.path.splitext(args.bed_file)[0] + '.bed'
+    # Paired end reads are already trimmed before FLASH, so skip trimming here in that case.
     bam_file = os.path.join(output_path, read_name + '.bam')
     trim_flanks = not args.p
-    bam_file = fastq2bam(output_path, bam_file, bed_file,
+    bam_file = fastq2bam(tssv_output_path, bam_file, args.bed_file,
                          args.library_file, trim_flanks,
                          args.num_threads)
+    if not args.keep_large_files:
+        shutil.rmtree(tssv_output_path)
 
     # Run UMIerrorcorrect
-    args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file, bed_file)
+    args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file)
     run_umi_errorcorrect(args_umierrrorcorrect)
+
+    # Filtering of UMI families using ML model
+    # TODO: 
+    # 1. Read JSON from UMIec and calculate features
+    # 2. Read model and apply filter
+    # 3. Create list of accepted UMIs? Apply in filter_bam? 
 
     consensus_reads_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
     filtered_reads_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
@@ -195,7 +215,7 @@ def main():
     # Convert to Fastq file and run FDStools
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
     bam2fastq(filtered_reads_file, consensus_fastq_file, num_threads=args.num_threads)
-    run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path)
+    run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path, verbose=True)
     logging.info('Finished generating consensus sequences!')
 
     # If desired, the pipeline can output uncollapsed reads files that can be used for diagnosis. 
