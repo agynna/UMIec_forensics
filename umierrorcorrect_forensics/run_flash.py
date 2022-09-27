@@ -41,9 +41,9 @@ def adapter_removal(read1, read2, num_threads, output_path):
                     '--file2', read2,
                     '--output1', trimmed_read1,
                     '--output2', trimmed_read2,
-                    '--settings', os.path.join(output_path, 'settings.txt'), 
-                    '--singleton', os.path.join(output_path, 'single.fasta.gz'), 
-                    '--discarded', os.path.join(output_path, 'discarded.fasta.gz'),
+                    '--settings', '/dev/null', 
+                    '--singleton', '/dev/null', 
+                    '--discarded', '/dev/null',
                     '--adapter1', adapter1,
                     '--adapter2', adapter2,
                     '--threads', num_threads],
@@ -81,11 +81,11 @@ def run_flash(read1, read2, num_threads, output_path, log_path):
     return output_file
 
 def main(args):
-    if args.log_path is None:
-        log_path = args.output_path
-    else:
+    if args.log_path:
         log_path = args.log_path
-    run_flash(args.read1, args.read2, args.num_threads, log_path)
+    else:
+        log_path = args.output_path
+    run_flash(args.read1, args.read2, args.num_threads, args.output_path, log_path)
     return None
 
 if __name__ == '__main__':
