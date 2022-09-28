@@ -16,6 +16,7 @@ from umierrorcorrect.get_consensus_statistics import run_get_consensus_statistic
 from run_fdstools import run_fdstools
 from convert_fastq2bam import fastq2bam
 from convert_bam2fastq import bam2fastq
+from run_umifilter import run_umifilter
 from umierrorcorrect_forensics.tools.uncollapse_reads import uncollapse_reads
 from umierrorcorrect_forensics.tools.downsample import downsample_reads
 
@@ -40,12 +41,15 @@ def parseArgs():
     parser.add_argument('-c', '--consensus_method', dest='consensus_method',
                         help="Method for consensus generation. One of 'most_common', 'position' or 'MSA'. \
                             [default = %(default)s]", default="most_common")
-    parser.add_argument('-cons_freq', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
+    parser.add_argument('-cf', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
                         help="Minimum proportion of the majority sequence (or base) for consensus to be called. \
-                            Only for 'position' and 'most_common' methods. [default = %(default)s]", default=0.5)
-    parser.add_argument('--filter_model', dest='filter_model_path', 
+                            Only for 'position' and 'most_common' methods. [default = %(default)s]", 
+                            type=float, default=0.5)
+    parser.add_argument('-um', '--umi_member_threshold', dest='umi_member_threshold', type=int, 
+                        help='Minimum number of members in an UMI family. [default = %(default)s]', default=3)
+    parser.add_argument('-fm', '--filter_model', dest='filter_model', 
                         help='Path to model for filtering UMI families. No filtering takes place if unset.')
-    parser.add_argument('--filter_th', dest='filter_threshold', 
+    parser.add_argument('-fth', '--filter_threshold', dest='filter_threshold', type=float,
                         help='Probability threshold for the filtering model. [default=%(default)s]', default=0.5)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
                         help='Number of threads to run the program on. [default=%(default)s]', default='2')
@@ -61,6 +65,13 @@ def parseArgs():
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
     logging.info('Starting UMIerrorcorrect forensics')
     return(args)
+
+def check_paths(paths):
+    """Check if input files exists."""
+    for p in paths:
+        if p:
+            if not os.path.isfile(p):
+                raise FileNotFoundError(p)
 
 def common_read_name(r1, r2):
     """
@@ -116,12 +127,17 @@ def set_args_umierrorcorrect(args, read_name, bam_file):
     args.regions_from_bed = True
     args.include_singletons = False
     args.remove_large_files = False
-    if args.filter_model_path:
+    if args.filter_model:
         args.output_json = True 
         args.consensus_frequency_threshold = 0.1
+    else:
+        args.output_json = False
+    if args.umi_member_threshold < 2:
+        args.include_singletons = True
     return args
 
 def main():
+    check_paths([args.read1, args.read2, args.bed_file, args.ini_file, args.bed_file, args.filter_model])
     # If asked to downsample reads, do that and save into temp folder. 
     if args.downsample: 
         logging.info('Downsampling input reads by factor ' + str(args.downsample))
@@ -189,32 +205,35 @@ def main():
     if not args.keep_large_files:
         shutil.rmtree(tssv_output_path)
 
-    # Run UMIerrorcorrect
+    # Run UMIerrorcorrects
     args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file)
     run_umi_errorcorrect(args_umierrrorcorrect)
 
-    # Filtering of UMI families using ML model
-    # TODO: 
-    # 1. Read JSON from UMIec and calculate features
-    # 2. Read model and apply filter
-    # 3. Create list of accepted UMIs? Apply in filter_bam? 
+    json_file_path = os.path.join(output_path, read_name + '_umi_families.json')
+    consensus_bam_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
+    
+    if args.filter_model:
+        mlfilter_bam_file = os.path.join(output_path, read_name + '_mlfiltered_reads.bam')
+        consensus_bam_file = run_umifilter(consensus_bam_file, json_file_path, 
+                                    args.filter_model, mlfilter_bam_file,
+                                    args.filter_threshold)
 
-    consensus_reads_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
-    filtered_reads_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
-    consensus_cutoff = 3
-    filter_bam(consensus_reads_file, filtered_reads_file, consensus_cutoff)
+    #TODO: Test to include singletons and set umi_member_cutoff = 1. Build new model. 
+
+    filtered_bam_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
+    filter_bam(consensus_bam_file, filtered_bam_file, args.umi_member_threshold)
 
     # Calculate UMIerrorcorrect statistics
     stats_file = os.path.join(output_path, read_name + '.hist')
     run_get_consensus_statistics(output_path,
-                                 consensus_reads_file,
+                                 consensus_bam_file,
                                  stats_file,
                                  True,
                                  read_name)
 
     # Convert to Fastq file and run FDStools
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
-    bam2fastq(filtered_reads_file, consensus_fastq_file, num_threads=args.num_threads)
+    bam2fastq(filtered_bam_file, consensus_fastq_file, num_threads=args.num_threads)
     run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path, verbose=True)
     logging.info('Finished generating consensus sequences!')
 
