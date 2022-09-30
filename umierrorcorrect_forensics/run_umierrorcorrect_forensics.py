@@ -129,7 +129,6 @@ def set_args_umierrorcorrect(args, read_name, bam_file):
     args.remove_large_files = False
     if args.filter_model:
         args.output_json = True 
-        args.consensus_frequency_threshold = 0.1
     else:
         args.output_json = False
     if args.umi_member_threshold < 2:
