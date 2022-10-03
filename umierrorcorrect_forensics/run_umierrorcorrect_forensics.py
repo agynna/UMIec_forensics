@@ -125,7 +125,6 @@ def set_args_umierrorcorrect(args, read_name, bam_file):
     args.position_threshold = 20
     args.edit_distance_threshold = 1
     args.regions_from_bed = True
-    args.include_singletons = False
     args.remove_large_files = False
     if args.filter_model:
         args.output_json = True 
@@ -133,6 +132,8 @@ def set_args_umierrorcorrect(args, read_name, bam_file):
         args.output_json = False
     if args.umi_member_threshold < 2:
         args.include_singletons = True
+    else: 
+        args.include_singletons = False
     return args
 
 def main():
@@ -212,12 +213,10 @@ def main():
     consensus_bam_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
     
     if args.filter_model:
-        mlfilter_bam_file = os.path.join(output_path, read_name + '_mlfiltered_reads.bam')
+        mlfilter_bam_file = os.path.join(output_path, read_name + '_mlfiltered_consensus_reads.bam')
         consensus_bam_file = run_umifilter(consensus_bam_file, json_file_path, 
                                     args.filter_model, mlfilter_bam_file,
                                     args.filter_threshold)
-
-    #TODO: Test to include singletons and set umi_member_cutoff = 1. Build new model. 
 
     filtered_bam_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
     filter_bam(consensus_bam_file, filtered_bam_file, args.umi_member_threshold)
@@ -230,7 +229,7 @@ def main():
                                  True,
                                  read_name)
 
-    # Convert to Fastq file and run FDStools
+    # Convert to Fastq file and then run FDStools to assign reads to alleles
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
     bam2fastq(filtered_bam_file, consensus_fastq_file, num_threads=args.num_threads)
     run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path, verbose=True)

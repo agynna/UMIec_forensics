@@ -104,7 +104,7 @@ def apply_filter(df_json, model_path, threshold=0.5):
     with open(model_path, "rb") as f: 
         model = pickle.load(f)
     probabilities = model.predict_proba(df_json)
-    df_out = df_json.loc[probabilities[:,0] > threshold, :]
+    df_out = df_json.loc[probabilities[:,0] >= threshold, :]
     return df_out
 
 def filter_bamfile(infilename, outfilename, acceptedfams):
@@ -127,7 +127,7 @@ def filter_bamfile(infilename, outfilename, acceptedfams):
 
 def run_umifilter(input_path, json_path, model_path, output_path, threshold):
     """Apply ML model to UMI families and write a new model BAM file with passing consensus sequences only."""
-    logging.info(f'Applying ML model to filter UMI families. Using model from {model_path} with threshold >{threshold}.')
+    logging.info(f'Applying ML model to filter UMI families. Using model from {model_path} with threshold >= {threshold}.')
     df_json = read_json(json_path)
     df_filtered = apply_filter(df_json, model_path, threshold)
     accepted_UMIfams = df_filtered["Name"].str.cat(df_filtered["Contig"], sep="_")
