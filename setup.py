@@ -4,7 +4,10 @@ from setuptools.command.install import install
 
 install_requires = ["fdstools>=2.0.1",
                     "umierrorcorrect==0.22",
-                    "pysam>=0.19.1"]
+                    "pysam>=0.19.1",
+                    "scikit-learn==1.1.1",
+                    "imbalanced-learn==0.9.1",
+                    "sklearn-pandas==2.2.0"]
 
 setup(name='umierrorcorrect_forensics',
       description='UMIerrorcorrect Forensics',
@@ -14,7 +17,7 @@ setup(name='umierrorcorrect_forensics',
       author_email='froste.svensson@gmail.com',
       license='mit',
       package_data={'umierrorcorrect_forensics': ['README.md']},
-      version="0.1",
+      version="0.2",
       include_package_data=True,
       install_requires=install_requires,
       #dependency_links=["https://github.com/tobbeost/umierrorcorrect/archive/v0.19.tar.gz"],

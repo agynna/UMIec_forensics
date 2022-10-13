@@ -1,11 +1,12 @@
 import argparse
 import sys
+import os
 import logging
-from timeit import repeat
+import numpy as np
 import pandas as pd
 import pickle
-from sklearn.ensemble import RandomForestClassifier
 import pysam
+import lzma
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="Applies an model to filter UMI families.")
@@ -16,7 +17,7 @@ def parseArgs():
     parser.add_argument('-o', '--output_path', dest='output_path',
                         help='Path to the output file.', required=True)
     parser.add_argument('-m', '--model_path', dest='model_path',
-                        help='Path to a pickle file with a Scikit-learn model to apply.', required=True)
+                        help='Path to a pickle (or .xz) file with a Scikit-learn model to apply.', required=True)
     parser.add_argument('-t', '--threshold', dest='threshold', type=float,
                         help='Classification threshold. [default=%(default)s]', default=0.5)
     args = parser.parse_args(sys.argv[1:])
@@ -101,11 +102,29 @@ def apply_filter(df_json, model_path, threshold=0.5):
     df_json = calc_features(df_json)
 
     # Read ML model. TODO: Change from pickle format to ONNX or PMML. 
-    with open(model_path, "rb") as f: 
-        model = pickle.load(f)
-    probabilities = model.predict_proba(df_json)
+    if os.path.splitext(model_path)[1] == ".xz":
+        with lzma.open(model_path, "rb") as f: 
+            model = pickle.load(f)
+    else:
+        with open(model_path, "rb") as f: 
+            model = pickle.load(f)
+
+    if isinstance(model, dict):
+        probabilities = predict_proba_model_dict(model, df_json)
+    else:
+        probabilities = model.predict_proba(df_json)
     df_out = df_json.loc[probabilities[:,0] >= threshold, :]
     return df_out
+
+def predict_proba_model_dict(model_dict, df):
+    """Replaces the predict_proba function when a dict of marker-specific models is used."""
+    y = np.empty((len(df), 2), dtype=float)
+    marker_list = df.marker.unique()
+    for marker in marker_list:
+        if not marker in model_dict:
+            ValueError(f"Marker name '{marker}' is not present in the user provided ML filter model.")
+        y[df["marker"] == marker, :] = model_dict[marker].predict_proba(df.loc[df["marker"] == marker])
+    return y
 
 def filter_bamfile(infilename, outfilename, acceptedfams):
     """Reads/writes BAM-file while removing those UMI families that are not in list."""
