@@ -29,7 +29,6 @@ def read_json(json_path):
     df_json = pd.read_json(json_path)
     df_json["UMI"] = df_json["Name"].str.split("_", expand=True)[3]
     df_json["marker"] = df_json["Annotation"].apply(lambda x: x[2])
-    # df_json = df_json.rename({"Consensus": "sequence", "Annotation": "marker"}, axis=1).reset_index()
     return df_json
 
 def get_shorter_longer(umi_fam, get_proportions=True): 
@@ -54,10 +53,11 @@ def get_shorter_longer(umi_fam, get_proportions=True):
         else: 
             n_samelength = n_samelength + pair[1]
     
-    output = [n_pure, n_unpure, cons_len, n_shorter, n_samelength, n_longer, n_variants]
+    output = [n_pure, n_unpure, n_shorter, n_samelength, n_longer, n_variants]
     if get_proportions:
         total_reads = sum(n_reads_per_seq)
         output = [val/total_reads for val in output]
+    output.append(cons_len)
     return output
 
 def get_stutterprops(umi_fam, repeat_length, get_proportions=True): 
@@ -89,15 +89,19 @@ def calc_features(df_json):
     df_features["normalized_count"] = df_features["total_count"] / df_features["total_count"].mean()
 
     # Purity, propotion longer, shorter etc
-    df_features[["purity", "unpurity", "cons_len", "prop_shorter", "prop_samelength", \
-        "prop_longer", "prop_n_variants"]] = df_features.apply(get_shorter_longer, axis=1, result_type="expand")
+    df_features[["purity", "unpurity", "prop_shorter", "prop_samelength", "prop_longer",\
+        "prop_n_variants", "cons_len"]] = df_features.apply(get_shorter_longer, axis=1, result_type="expand")
     df_features["diff_longer_shorter"] = (df_features["prop_longer"]-df_features["prop_shorter"])/df_features["total_count"]
 
     # Stutter proportion. TODO: Currently only supports markers with repeat length of 4! Fix please. 
     df_features[["prop_minus1", "prop_minus2", "prop_plus1"]] = df_features.apply(get_stutterprops, axis=1, result_type="expand", repeat_length=4)
     return df_features
 
-def apply_filter(df_json, model_path, threshold=0.5):
+def adjust_mlscores(cons_len, k, m):
+    '''Adjusts the scores returned by the ML model counter length bias.'''
+    return k*cons_len + m
+
+def apply_filter(df_json, model_path, threshold):
     """Applies model to UMI families and returns those who passed."""
     df_json = calc_features(df_json)
 
@@ -123,7 +127,18 @@ def predict_proba_model_dict(model_dict, df):
     for marker in marker_list:
         if not marker in model_dict:
             ValueError(f"Marker name '{marker}' is not present in the user provided ML filter model.")
-        y[df["marker"] == marker, :] = model_dict[marker].predict_proba(df.loc[df["marker"] == marker])
+
+        if isinstance(model_dict[marker], list): 
+            logging.info(f"Applying ML model and length correction to {marker} UMI families.")
+            prel_proba = model_dict[marker][0].predict_proba(df.loc[df["marker"] == marker])
+            adjustment = adjust_mlscores(df.loc[df["marker"] == marker, "cons_len"], 
+                                            model_dict[marker][1], 
+                                            model_dict[marker][2])
+            proba = np.vstack([prel_proba[:,0]-adjustment, prel_proba[:,1]+adjustment]).T
+            y[df["marker"] == marker, :] = proba
+        else: 
+            logging.info(f"Applying ML model to {marker} UMI families.")
+            y[df["marker"] == marker, :] = model_dict[marker].predict_proba(df.loc[df["marker"] == marker])
     return y
 
 def filter_bamfile(infilename, outfilename, acceptedfams):
