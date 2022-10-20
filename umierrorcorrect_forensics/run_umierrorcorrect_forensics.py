@@ -20,7 +20,6 @@ from run_umifilter import run_umifilter
 from umierrorcorrect_forensics.tools.uncollapse_reads import uncollapse_reads
 from umierrorcorrect_forensics.tools.downsample import downsample_reads
 
-
 def parseArgs():
     parser = argparse.ArgumentParser(description="TSSV seperation of Simsenseq sequencing of forensics markers ")
     parser.add_argument('-o', '--output_path', dest='output_path',
@@ -41,14 +40,14 @@ def parseArgs():
     parser.add_argument('-c', '--consensus_method', dest='consensus_method',
                         help="Method for consensus generation. One of 'most_common', 'position' or 'MSA'. \
                             [default = %(default)s]", default="most_common")
+    parser.add_argument('-um', '--umi_member_threshold', dest='umi_member_threshold', type=int, 
+                        help='Minimum number of members in an UMI family. [default = %(default)s]', default=3)
     parser.add_argument('-cf', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
                         help="Minimum proportion of the majority sequence (or base) for consensus to be called. \
                             Only for 'position' and 'most_common' methods. [default = %(default)s]", 
                             type=float, default=0.5)
-    parser.add_argument('-um', '--umi_member_threshold', dest='umi_member_threshold', type=int, 
-                        help='Minimum number of members in an UMI family. [default = %(default)s]', default=3)
     parser.add_argument('-fm', '--filter_model', dest='filter_model', 
-                        help='Path to model for filtering UMI families. No filtering takes place if unset.')
+                        help='Path to model for filtering UMI families. No ML filtering takes place if unset.')
     parser.add_argument('-fth', '--filter_threshold', dest='filter_threshold', type=float,
                         help='Probability threshold for the filtering model. [default=%(default)s]', default=0.5)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
@@ -242,7 +241,6 @@ def main():
         uncollapse_reads(consensus_fastq_file, uncollapsed_path)
         run_fdstools(uncollapsed_path, args.library_file, args.ini_file, output_path, verbose=False)
         logging.info("Finished generating uncollapsed read files! ")
-
 
 if __name__ == '__main__':
     args = parseArgs()
