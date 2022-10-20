@@ -91,7 +91,7 @@ def calc_features(df_json):
     # Purity, propotion longer, shorter etc
     df_features[["purity", "unpurity", "prop_shorter", "prop_samelength", "prop_longer",\
         "prop_n_variants", "cons_len"]] = df_features.apply(get_shorter_longer, axis=1, result_type="expand")
-    df_features["diff_longer_shorter"] = (df_features["prop_longer"]-df_features["prop_shorter"])/df_features["total_count"]
+    df_features["diff_longer_shorter"] = (df_features["prop_longer"]-df_features["prop_shorter"])
 
     # Stutter proportion. TODO: Currently only supports markers with repeat length of 4! Fix please. 
     df_features[["prop_minus1", "prop_minus2", "prop_plus1"]] = df_features.apply(get_stutterprops, axis=1, result_type="expand", repeat_length=4)
