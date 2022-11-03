@@ -18,11 +18,27 @@ def parseArgs():
                         help='Path to the output file.', required=True)
     parser.add_argument('-m', '--model_path', dest='model_path',
                         help='Path to a pickle (or .xz) file with a Scikit-learn model to apply.', required=True)
-    parser.add_argument('-t', '--threshold', dest='threshold', type=float,
-                        help='Classification threshold. [default=%(default)s]', default=0.5)
+    th_group = parser.add_mutually_exclusive_group(required=True)
+    th_group.add_argument('-th', '--threshold', dest='threshold', type=float,
+                        help='Classification threshold.')
+    th_group.add_argument('-thp', '--thresholds_path', dest='thresholds_path',
+                        help='Path to file with classification threshold per marker. Either -th or -thp are required.')
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
     return(args)
+
+def read_thresholds(thresholds_path):
+    th_dict = {}
+    with open(thresholds_path, "r") as f:
+        for line in f:
+            if line[0] == "#":
+                continue
+            marker = line.split()[0]
+            th = float(line.split()[1])
+            if th <= 0 or th >= 1: 
+                raise ValueError(f"Filter thresholds in {thresholds_path} must be between 0 and 1.")
+            th_dict.update({marker: th})
+    return th_dict
 
 def read_json(json_path):
     """Reads a JSON file with UMI families."""
@@ -101,7 +117,7 @@ def adjust_mlscores(cons_len, k, m):
     '''Adjusts the scores returned by the ML model counter length bias.'''
     return k*cons_len + m
 
-def apply_filter(df_json, model_path, threshold):
+def apply_filter(df_json, model_path, threshold=None, threshold_path=None):
     """Applies model to UMI families and returns those who passed."""
     df_json = calc_features(df_json)
 
@@ -117,14 +133,18 @@ def apply_filter(df_json, model_path, threshold):
         probabilities = predict_proba_model_dict(model, df_json)
     else:
         probabilities = model.predict_proba(df_json)
-    df_out = df_json.loc[probabilities[:,0] >= threshold, :]
+
+    if threshold_path:
+        threshold_dict = read_thresholds(threshold_path)
+        df_out = filter_thresholds_dict(df_json, probabilities[:,0], threshold_dict)
+    elif threshold:
+        df_out = df_json.loc[probabilities[:,0] >= threshold, :]
     return df_out
 
 def predict_proba_model_dict(model_dict, df):
     """Replaces the predict_proba function when a dict of marker-specific models is used."""
     y = np.empty((len(df), 2), dtype=float)
-    marker_list = df.marker.unique()
-    for marker in marker_list:
+    for marker in df.marker.unique():
         if not marker in model_dict:
             ValueError(f"Marker name '{marker}' is not present in the user provided ML filter model.")
 
@@ -140,6 +160,17 @@ def predict_proba_model_dict(model_dict, df):
             logging.info(f"Applying ML model to {marker} UMI families.")
             y[df["marker"] == marker, :] = model_dict[marker].predict_proba(df.loc[df["marker"] == marker])
     return y
+
+def filter_thresholds_dict(df, probabilites, threshold_dict):
+    """Filters a data frame on probabilities, with a different threshold for each marker defined in a dict."""
+    df["p"] = probabilites
+    df["keep"] = False
+    for marker in df.marker.unique():
+        if not marker in threshold_dict:
+            ValueError(f"Marker name '{marker}' is not present in the user provided list of filter thresholds.")  
+        df.loc[(df.p >= threshold_dict[marker]) & (df.marker == marker), "keep"] = True
+    return df.loc[df.keep].drop(columns=["p", "keep"])
+
 
 def filter_bamfile(infilename, outfilename, acceptedfams):
     """Reads/writes BAM-file while removing those UMI families that are not in list."""
@@ -159,17 +190,20 @@ def filter_bamfile(infilename, outfilename, acceptedfams):
     pysam.index(outfilename)
     logging.info(f"Wrote ML filtered BAM file: {outfilename}. Included {n_accepted}, dismissed {n_dismissed} consensus sequences out of {n_accepted+n_dismissed} in total.")
 
-def run_umifilter(input_path, json_path, model_path, output_path, threshold):
+def run_umifilter(input_path, json_path, model_path, output_path, threshold=None, thresholds_path=None):
     """Apply ML model to UMI families and write a new model BAM file with passing consensus sequences only."""
-    logging.info(f'Applying ML model to filter UMI families. Using model from {model_path} with threshold >= {threshold}.')
+    if thresholds_path:
+        logging.info(f'Applying ML model to filter UMI families. Using model from {model_path} with thresholds from {thresholds_path}.')
+    else:
+        logging.info(f'Applying ML model to filter UMI families. Using model from {model_path} with threshold >= {threshold}.')
     df_json = read_json(json_path)
-    df_filtered = apply_filter(df_json, model_path, threshold)
+    df_filtered = apply_filter(df_json, model_path, threshold, thresholds_path)
     accepted_UMIfams = df_filtered["Name"].str.cat(df_filtered["Contig"], sep="_")
     filter_bamfile(input_path, output_path, accepted_UMIfams)
     return output_path
 
 def main(args):
-    run_umifilter(args.input_path, args.json_path, args.model_path, args.output_path, args.threshold)
+    run_umifilter(args.input_path, args.json_path, args.model_path, args.output_path, args.threshold, args.thresholds_path)
     return None
 
 if __name__ == '__main__':

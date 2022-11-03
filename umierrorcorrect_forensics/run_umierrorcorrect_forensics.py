@@ -40,16 +40,18 @@ def parseArgs():
     parser.add_argument('-c', '--consensus_method', dest='consensus_method',
                         help="Method for consensus generation. One of 'most_common', 'position' or 'MSA'. \
                             [default = %(default)s]", default="most_common")
-    parser.add_argument('-um', '--umi_member_threshold', dest='umi_member_threshold', type=int, 
+    parser.add_argument('-uth', '--umi_member_threshold', dest='umi_member_threshold', type=int, 
                         help='Minimum number of members in an UMI family. [default = %(default)s]', default=3)
-    parser.add_argument('-cf', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
+    parser.add_argument('-cth', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
                         help="Minimum proportion of the majority sequence (or base) for consensus to be called. \
                             Only for 'position' and 'most_common' methods. [default = %(default)s]", 
                             type=float, default=0.5)
     parser.add_argument('-fm', '--filter_model', dest='filter_model', 
                         help='Path to model for filtering UMI families. No ML filtering takes place if unset.')
-    parser.add_argument('-fth', '--filter_threshold', dest='filter_threshold', type=float,
-                        help='Probability threshold for the filtering model. [default=%(default)s]', default=0.5)
+    parser.add_argument('-fth', '--filter_threshold', dest='filter_threshold', type=float, 
+                        help='Probability threshold for the filtering model. [default=%(default)s].', default=0.95)
+    parser.add_argument('-fthp', '--filter_threshold_path', dest='filter_threshold_path', 
+                        help='Path to a tab-separated file with filter thresholds for each marker. Overrides -fth.')
     parser.add_argument('-t', '--num_threads', dest='num_threads',
                         help='Number of threads to run the program on. [default=%(default)s]', default='2')
     parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
@@ -213,9 +215,14 @@ def main():
     
     if args.filter_model:
         mlfilter_bam_file = os.path.join(output_path, read_name + '_mlfiltered_consensus_reads.bam')
-        consensus_bam_file = run_umifilter(consensus_bam_file, json_file_path, 
-                                    args.filter_model, mlfilter_bam_file,
-                                    args.filter_threshold)
+        if args.filter_threshold_path: 
+            consensus_bam_file = run_umifilter(consensus_bam_file, json_file_path, 
+                                        args.filter_model, mlfilter_bam_file,
+                                        thresholds_path=args.filter_threshold_path)
+        else:
+            consensus_bam_file = run_umifilter(consensus_bam_file, json_file_path, 
+                                        args.filter_model, mlfilter_bam_file,
+                                        threshold=args.filter_threshold)
 
     filtered_bam_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
     filter_bam(consensus_bam_file, filtered_bam_file, args.umi_member_threshold)
