@@ -54,13 +54,14 @@ def parseArgs():
                         help='Path to a tab-separated file with filter thresholds for each marker. Overrides -fth.')
     parser.add_argument('-t', '--num_threads', dest='num_threads',
                         help='Number of threads to run the program on. [default=%(default)s]', default='2')
-    parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
-                        help='Provide uncollapsed FDStools output, useful for diversity evaluation', action='store_true')
+    parser.add_argument('-u', '--uncollapse', dest='uncollapse', action='store_true', 
+                        help='Provide uncollapsed FDStools output, useful for diversity evaluation')
     parser.add_argument('--downsample', dest='downsample', type=float,
                         help='Downsample the number of reads by this fraction. Useful for evaluation.')
     parser.add_argument('--sample_seed', dest='seed', type=int,
                         help='Seed for downsampling. For reproducability.')
-    parser.add_argument('--keep', dest='keep_large_files', help='Keep large files.', action='store_true')
+    parser.add_argument('--keep', dest='keep_large_files', action='store_true', 
+                        help="Keep large files. (circa 1 GB)")
     
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
@@ -139,10 +140,10 @@ def set_args_umierrorcorrect(args, read_name, bam_file):
 
 def main():
     check_paths([args.read1, args.read2, args.bed_file, args.ini_file, args.bed_file, args.filter_model])
+    tmp_dir = tempfile.mkdtemp()
     # If asked to downsample reads, do that and save into temp folder. 
     if args.downsample: 
         logging.info('Downsampling input reads by factor ' + str(args.downsample))
-        tmp_dir = tempfile.mkdtemp()
         if args.p: 
             read1, read2 = downsample_reads(frac=args.downsample, 
                                             read1=args.read1, 
@@ -165,8 +166,6 @@ def main():
         read_name = common_read_name(os.path.basename(read1),
                                      os.path.basename(read2))
         output_path = make_outputdir(args.output_path, read_name)
-        if not(args.downsample):
-            tmp_dir = tempfile.mkdtemp()
         merged_reads_file = run_flash(read1,
                                       read2,
                                       args.num_threads,
@@ -187,14 +186,13 @@ def main():
     fastq_file = fastq_file[0]
     if args.p or args.downsample:
         if args.keep_large_files:
-            shutil.copytree(tmp_dir, os.path.join(output_path, "preprocessing_output"))
-        else: 
-            shutil.rmtree(tmp_dir)
+            shutil.move(tmp_dir, os.path.join(output_path, "preprocessing_output"))
 
     # Alignment of reads to markers by TSSV
     plot_qc_stats = False # Requires pandas, seaborn & matplotlib.
-    tssv_output_path = os.path.join(output_path, "tssv_output")
+    tssv_output_path = os.path.join(tmp_dir, "tssv_output")
     run_tssv(fastq_file, args.library_file, args.num_threads, tssv_output_path, plot_qc_stats)
+    shutil.copy(os.path.join(tssv_output_path, "statistics.csv"), os.path.join(output_path, "statistics_preumi.csv"))
 
     # Convert to fastq data to BAM file
     # Paired end reads are already trimmed before FLASH, so skip trimming here in that case.
@@ -203,8 +201,10 @@ def main():
     bam_file = fastq2bam(tssv_output_path, bam_file, args.bed_file,
                          args.library_file, trim_flanks,
                          args.num_threads)
-    if not args.keep_large_files:
-        shutil.rmtree(tssv_output_path)
+    if args.keep_large_files:
+        shutil.move(tssv_output_path, os.path.join(output_path, "tssv_output"))
+    else: 
+        shutil.rmtree(tmp_dir)
 
     # Run UMIerrorcorrects
     args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file)
@@ -238,7 +238,7 @@ def main():
     # Convert to Fastq file and then run FDStools to assign reads to alleles
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
     bam2fastq(filtered_bam_file, consensus_fastq_file, num_threads=args.num_threads)
-    run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path, verbose=True)
+    run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path, verbose=False)
     logging.info('Finished generating consensus sequences!')
 
     # If desired, the pipeline can output uncollapsed reads files that can be used for diagnosis. 
