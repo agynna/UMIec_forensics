@@ -61,7 +61,7 @@ def parseArgs():
     parser.add_argument('--sample_seed', dest='seed', type=int,
                         help='Seed for downsampling. For reproducability.')
     parser.add_argument('--keep', dest='keep_large_files', action='store_true', 
-                        help="Keep large files. (circa 1 GB)")
+                        help="Keep large files. (circa 1.5 GB). Causes temp files to be written to output directory.")
     
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
@@ -120,9 +120,10 @@ def set_args_preprocessing(args, read_name, output_path, **kwargs):
     args.spacer_length = 16
     return args
 
-def set_args_umierrorcorrect(args, read_name, bam_file):
+def set_args_umierrorcorrect(args, output_path, read_name, bam_file):
     args.bam_file = bam_file
     args.sample_name = read_name
+    args.output_path = output_path
     args.indel_frequency_threshold = 0.6
     args.position_threshold = 20
     args.edit_distance_threshold = 1
@@ -140,7 +141,21 @@ def set_args_umierrorcorrect(args, read_name, bam_file):
 
 def main():
     check_paths([args.read1, args.read2, args.bed_file, args.ini_file, args.bed_file, args.filter_model])
-    tmp_dir = tempfile.mkdtemp()
+    # Create output dir
+    if args.p:
+        read_name = common_read_name(os.path.basename(args.read1),
+                                     os.path.basename(args.read2))
+    else:
+        read_name = os.path.basename(args.read1).split('.',1)[0]
+    output_path = make_outputdir(args.output_path, read_name)
+
+    # Create temp dir
+    if args.keep_large_files:
+        tmp_dir = os.path.join(output_path, "tmp")
+        os.mkdir(tmp_dir)
+    else:
+        tmp_dir = tempfile.mkdtemp()
+
     # If asked to downsample reads, do that and save into temp folder. 
     if args.downsample: 
         logging.info('Downsampling input reads by factor ' + str(args.downsample))
@@ -160,56 +175,45 @@ def main():
         read1 = args.read1
         read2 = args.read2
 
-
     # If paired ends, combine reads into single reads using FLASH
     if args.p:
-        read_name = common_read_name(os.path.basename(read1),
-                                     os.path.basename(read2))
-        output_path = make_outputdir(args.output_path, read_name)
         merged_reads_file = run_flash(read1,
                                       read2,
                                       args.num_threads,
                                       tmp_dir,
                                       output_path)
         args_preprocessing = set_args_preprocessing(args, read_name,
-                                                    output_path,
+                                                    tmp_dir,
                                                     tmpdir=tmp_dir,
                                                     reads_file=merged_reads_file)
     else:
-        read_name = os.path.basename(read1).split('.',1)[0]
-        output_path = make_outputdir(args.output_path, read_name)
         args_preprocessing = set_args_preprocessing(args, read_name,
-                                                    output_path,
+                                                    tmp_dir,
                                                     tmpdir=tmp_dir)
 
     # Preprocessing using the UMIec preprocessor 
-    (fastq_file, nseqs) = run_preprocessing(args_preprocessing)
-    fastq_file = fastq_file[0]
-    if args.p or args.downsample:
-        if args.keep_large_files:
-            shutil.move(tmp_dir, os.path.join(output_path, "preprocessing_output"))
+    (fastq_file_umi_in_header, nseqs) = run_preprocessing(args_preprocessing)
+    fastq_file_umi_in_header = fastq_file_umi_in_header[0]
 
     # Alignment of reads to markers by TSSV
     plot_qc_stats = False # Requires pandas, seaborn & matplotlib.
     tssv_output_path = os.path.join(tmp_dir, "tssv_output")
-    run_tssv(fastq_file, args.library_file, args.num_threads, tssv_output_path, plot_qc_stats)
+    run_tssv(fastq_file_umi_in_header, args.library_file, args.num_threads, tssv_output_path, plot_qc_stats)
     shutil.copy(os.path.join(tssv_output_path, "statistics.csv"), os.path.join(output_path, "statistics_preumi.csv"))
 
     # Convert to fastq data to BAM file
     # Paired end reads are already trimmed before FLASH, so skip trimming here in that case.
-    bam_file = os.path.join(output_path, read_name + '.bam')
+    bam_file = os.path.join(tmp_dir, read_name + '.bam')
     trim_flanks = not args.p
     bam_file = fastq2bam(tssv_output_path, bam_file, args.bed_file,
                          args.library_file, trim_flanks,
                          args.num_threads)
-    if args.keep_large_files:
-        shutil.move(tssv_output_path, os.path.join(output_path, "tssv_output"))
-    else: 
-        shutil.rmtree(tmp_dir)
-
+    
     # Run UMIerrorcorrects
-    args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file)
+    args_umierrrorcorrect = set_args_umierrorcorrect(args, output_path, read_name, bam_file)
     run_umi_errorcorrect(args_umierrrorcorrect)
+    if not args.keep_large_files:
+        shutil.rmtree(tmp_dir)
 
     json_file_path = os.path.join(output_path, read_name + '_umi_families.json')
     consensus_bam_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
