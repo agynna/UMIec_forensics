@@ -176,10 +176,11 @@ def main():
                                                     tmpdir=tmp_dir,
                                                     reads_file=merged_reads_file)
     else:
-        read_name = os.path.basename(read1.split('.',1)[0])
+        read_name = os.path.basename(read1).split('.',1)[0]
         output_path = make_outputdir(args.output_path, read_name)
         args_preprocessing = set_args_preprocessing(args, read_name,
-                                                    output_path)
+                                                    output_path,
+                                                    tmpdir=tmp_dir)
 
     # Preprocessing using the UMIec preprocessor 
     (fastq_file, nseqs) = run_preprocessing(args_preprocessing)
