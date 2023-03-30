@@ -1,0 +1,9 @@
+# ML classification thresholds for the 221027-MLP model
+# Gives approx equal number of families per marker as the naive thresholds. 
+D12S391 0.92971
+D1S1656 0.96349
+D21S11  0.96931
+D2S441  0.98825
+D3S1358 0.97083
+D8S1179 0.94677
+vWA     0.96349
