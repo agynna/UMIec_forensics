@@ -17,7 +17,7 @@ def get_virtualenv_path():
 def copy_and_move_software():
     """Used the subprocess module to compile/install the C software."""
     flash_path = os.path.dirname(os.path.abspath("./"))
-    flash_path = os.path.join(flash_path , "umierrorcorrect_forensics/umierrorcorrect_forensics/FLASH-lowercase-overhang/")
+    flash_path = os.path.join(flash_path , "UMIec_forensics/umierrorcorrect_forensics/FLASH-lowercase-overhang/")
     venv = get_virtualenv_path()
     # compile the software
     subprocess.check_call("make", cwd=flash_path)
