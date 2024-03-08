@@ -14,8 +14,6 @@ def parseArgs():
                         help='Path to the output directory, required', required=True)
     parser.add_argument('-r1', '--read1', dest='read1',
                         help='Path to first FASTQ file, R1, required', required=True)
-#    parser.add_argument('-r2', '--read2', dest='read2',
-#                        help='Path to second FASTQ file, R2 if applicable')
     parser.add_argument('-l', '--library', dest='library_file',
                         help='Path to the Library file for TSSV, Required', required=True)
     parser.add_argument('-t', '--num_threads', dest='num_threads',
@@ -57,7 +55,7 @@ def qc_plot_alignment(tssv_folder, out_folder):
 
 def run_tssv(fastq_file, library_file, num_threads, output_path, plot_qc = False):
     # If fastq file is compressed, unzip to temp file.
-    if os.path.splitext(fastq_file)[1] == '.gz':
+    if os.path.splitext(fastq_file)[-1] == '.gz':
         (_, unzipped_fastq) = tempfile.mkstemp()
         with open(unzipped_fastq, 'w') as uf:
             gzip_run = subprocess.run(['gunzip',
@@ -67,7 +65,7 @@ def run_tssv(fastq_file, library_file, num_threads, output_path, plot_qc = False
                                      )
 
         if gzip_run.returncode == 0:
-            logging.info('Unzipped fastq file')
+            logging.info('Unzipped preprocessed fastq.gz file to {}'.format(unzipped_fastq))
         else:
             gzip_run.check_returncode()
         fastq_file = unzipped_fastq
@@ -85,7 +83,7 @@ def run_tssv(fastq_file, library_file, num_threads, output_path, plot_qc = False
                                 stdout=subprocess.DEVNULL
                               )
     if tssv_run.returncode == 0:
-        logging.info('TSSV finished successfully')
+        logging.info('TSSV finished successfully assigning reads to loci')
         if fastq_istempfile:
             os.remove(fastq_file)
     else:

@@ -80,22 +80,20 @@ def make_fdstools_library(library_file):
             l = f.readline()
     return lib
 
-def trim_sequences(df_longseqs, library_file):
+def trim_sequences(longseqs, library_file):
     '''
     Removes the flanks from fastq sequences as specified in library file.  
     This calls the FDStools TSSV internal function to do that. This is a bit 
     hacky, and the FDStools manual explicitly tells you not to do that. 
     Use with caution. 
-    Takes DataFrame with column "sequence", returns identical DF with that
-    column trimmed. 
+    Takes a list of long sequences, returns a list of trimmed sequences. 
     '''
     indel_score = 2
     tssv_library = make_fdstools_library(library_file)
     trimmed_seqs = []
-    for seq in df_longseqs["sequence"]:
+    for seq in longseqs:
         list_of_markers_trimmed = tssv.process_sequence(tssv_library, indel_score, False, seq)
         # Extract sequence from tssv return structure
-        trimmed_seq = ""
         for record in list_of_markers_trimmed: 
             if record[2]:
                 trimmed_seq = record[2]
@@ -103,11 +101,9 @@ def trim_sequences(df_longseqs, library_file):
                 trimmed_seq = record[3]
         # For some reason, trimmed seqs come out one nt too long. 
         trimmed_seqs.append(trimmed_seq[0:-1])
-    df_out = df_longseqs
-    df_out["sequence"] = trimmed_seqs
-    return df_out
+    return trimmed_seqs
 
-def create_histo_loop(folder, outfolder=None, csvfile=None):
+def create_histo_loop(folder, outfolder=None, csvfile=None, library_file=None):
     folder = folder + "/"
     all_subdirs = [d for d in os.listdir(folder) if os.path.isdir(folder + d)]
     df_families = pd.DataFrame(columns=["marker", "size", "sequence"])

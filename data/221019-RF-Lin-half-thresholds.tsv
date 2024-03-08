@@ -1,0 +1,9 @@
+# ML classification thresholds for the 221019-RF-Lin model
+# Gives approx half the number of families per marker as the naive thresholds. 
+D12S391 0.97058
+D1S1656 0.97951
+D21S11  0.98667
+D2S441  0.9945
+D3S1358 0.98596
+D8S1179 0.9818
+vWA     0.97521

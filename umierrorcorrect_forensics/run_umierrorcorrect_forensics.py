@@ -16,9 +16,9 @@ from umierrorcorrect.get_consensus_statistics import run_get_consensus_statistic
 from run_fdstools import run_fdstools
 from convert_fastq2bam import fastq2bam
 from convert_bam2fastq import bam2fastq
+from run_umifilter import run_umifilter
 from umierrorcorrect_forensics.tools.uncollapse_reads import uncollapse_reads
 from umierrorcorrect_forensics.tools.downsample import downsample_reads
-
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="TSSV seperation of Simsenseq sequencing of forensics markers ")
@@ -29,13 +29,29 @@ def parseArgs():
     parser.add_argument('-r2', '--read2', dest='read2',
                         help='Path to second FASTQ file, R2 if applicable')
     parser.add_argument('-l', '--library', dest='library_file',
-                        help='Path to the Library file for TSSV, Required', required=True)
+                        help='Path to the library file for FDStools, required', required=True)
     parser.add_argument('-b', '--bed', dest='bed_file',
-                        help='Path to the Library file for TSSV, Required', required=True)
+                        help='Path to the marker definition file for TSSV, required', required=True)
     parser.add_argument('-i', '--ini', dest='ini_file',
                         help='Path to first FDStools ini file, required', required=True)
     parser.add_argument('-g', '--reference', dest='reference_file',
                         help='reference genome', required=True)
+    parser.add_argument('-p', help='If fastq is paired', action='store_true')                    
+    parser.add_argument('-c', '--consensus_method', dest='consensus_method',
+                        help="Method for consensus generation. One of 'most_common', 'position' or 'MSA'. \
+                            [default = %(default)s]", default="most_common")
+    parser.add_argument('-uth', '--umi_member_threshold', dest='umi_member_threshold', type=int, 
+                        help='Minimum number of members in an UMI family. [default = %(default)s]', default=3)
+    parser.add_argument('-cth', '--consensus_frequency_threshold', dest='consensus_frequency_threshold', 
+                        help="Minimum proportion of the majority sequence (or base) for consensus to be called. \
+                            Only for 'position' and 'most_common' methods. [default = %(default)s]", 
+                            type=float, default=0.5)
+    parser.add_argument('-fm', '--filter_model', dest='filter_model', 
+                        help='Path to model for filtering UMI families. No ML filtering takes place if unset.')
+    parser.add_argument('-fth', '--filter_threshold', dest='filter_threshold', type=float, 
+                        help='Probability threshold for the filtering model. [default=%(default)s].', default=0.95)
+    parser.add_argument('-fthp', '--filter_threshold_path', dest='filter_threshold_path', 
+                        help='Path to a tab-separated file with filter thresholds for each marker. Overrides -fth.')
     parser.add_argument('-t', '--num_threads', dest='num_threads',
                         help='Number of threads to run the program on. Default=%(default)s', default='2')
     parser.add_argument('-u', '--uncollapse', dest='uncollapse', 
@@ -46,24 +62,38 @@ def parseArgs():
                         help='Downsample the number of reads by this fraction. Useful for evaluation.')
     parser.add_argument('--sample_seed', dest='seed', type=int,
                         help='Seed for downsampling. For reproducability.')
-    parser.add_argument('-p', help='If fastq is paired', action='store_true')
+    parser.add_argument('--keep', dest='keep_large_files', action='store_true', 
+                        help="Keep large files. (circa 1.5 GB). Causes temp files to be written to output directory.")
+    
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
     logging.info('Starting UMIerrorcorrect forensics')
     return(args)
 
-def common_part_of_read_name(r1, r2):
+def check_paths(paths):
+    """Check if input files exists."""
+    for p in paths:
+        if p:
+            if not os.path.isfile(p):
+                raise FileNotFoundError(p)
+
+def common_read_name(r1, r2):
     """
-    Return the longest common part of file names, beginning from the start. If
-    they are all different, return the first file name instead.
+    Return the longest common part of read file names. First tries 
+    to use the part before the first underscore. If those aren't 
+    identical, it will use the longest common part from the start. 
+    If the names are all different, return the first file name instead.
     """
-    i = len(r2)
-    while not r1.startswith(r2[0:i]):
-        i = i-1
-    if i > 0:
-        common_part = r1[0:i]
-    else:
-        common_part = r1
+    if r1.split("_")[0] == r2.split("_")[0]:
+        common_part = r1.split("_")[0]
+    else: 
+        i = len(r2)
+        while not r1.startswith(r2[0:i]):
+            i = i-1
+        if i > 0:
+            common_part = r1[0:i]
+        else:
+            common_part = r1
     return common_part
 
 def make_outputdir(output_path, read_name):
@@ -85,32 +115,53 @@ def set_args_preprocessing(args, read_name, output_path, **kwargs):
     if reads_file:
         args.read1 = reads_file
     args.output_path = output_path
-    read_filename = os.path.basename(args.read1)
     args.sample_name = read_name
     args.mode = 'single'   # We do not use the double end read feature of umierrorcorrect
     args.gziptool = 'gzip'
     args.umi_length = 12
     args.spacer_length = 16
+    args.adapter_trimming = False
     return args
 
-def set_args_umierrorcorrect(args, read_name, bam_file, bed_file):
+def set_args_umierrorcorrect(args, output_path, read_name, bam_file):
     args.bam_file = bam_file
-    args.bed_file = bed_file
     args.sample_name = read_name
-    args.consensus_frequency_threshold = 0.5
+    args.output_path = output_path
     args.indel_frequency_threshold = 0.6
     args.position_threshold = 20
     args.edit_distance_threshold = 1
     args.regions_from_bed = True
-    args.include_singletons = False
     args.remove_large_files = False
+    if args.filter_model:
+        args.output_json = True 
+    else:
+        args.output_json = False
+    if args.umi_member_threshold < 2:
+        args.include_singletons = True
+    else: 
+        args.include_singletons = False
     return args
 
 def main():
+    check_paths([args.read1, args.read2, args.bed_file, args.ini_file, args.bed_file, args.filter_model])
+    # Create output dir
+    if args.p:
+        read_name = common_read_name(os.path.basename(args.read1),
+                                     os.path.basename(args.read2))
+    else:
+        read_name = os.path.basename(args.read1).split('.',1)[0]
+    output_path = make_outputdir(args.output_path, read_name)
+
+    # Create temp dir
+    if args.keep_large_files:
+        tmp_dir = os.path.join(output_path, "tmp")
+        os.mkdir(tmp_dir)
+    else:
+        tmp_dir = tempfile.mkdtemp()
+
     # If asked to downsample reads, do that and save into temp folder. 
     if args.downsample: 
         logging.info('Downsampling input reads by factor ' + str(args.downsample))
-        tmp_dir = tempfile.mkdtemp()
         if args.p: 
             read1, read2 = downsample_reads(frac=args.downsample, 
                                             read1=args.read1, 
@@ -127,73 +178,74 @@ def main():
         read1 = args.read1
         read2 = args.read2
 
-
     # If paired ends, combine reads into single reads using FLASH
     if args.p:
-        read_name = common_part_of_read_name(os.path.basename(read1),
-                                             os.path.basename(read2))
-        output_path = make_outputdir(args.output_path, read_name)
-        if not(args.downsample):
-            tmp_dir = tempfile.mkdtemp()
         merged_reads_file = run_flash(read1,
                                       read2,
                                       args.num_threads,
                                       tmp_dir,
                                       output_path)
         args_preprocessing = set_args_preprocessing(args, read_name,
-                                                    output_path,
+                                                    tmp_dir,
                                                     tmpdir=tmp_dir,
                                                     reads_file=merged_reads_file)
     else:
-        read_name = os.path.basename(read1).split('.',1)[0]
-        output_path = make_outputdir(args.output_path, read_name)
         args_preprocessing = set_args_preprocessing(args, read_name,
-                                                    output_path)
+                                                    tmp_dir,
+                                                    tmpdir=tmp_dir)
 
     # Preprocessing using the UMIec preprocessor 
-    (fastq_file, nseqs) = run_preprocessing(args_preprocessing)
-    fastq_file = fastq_file[0]
-    if args.p or args.downsample:
-        shutil.rmtree(tmp_dir)
+    (fastq_file_umi_in_header, nseqs) = run_preprocessing(args_preprocessing)
+    fastq_file_umi_in_header = fastq_file_umi_in_header[0]
 
     # Alignment of reads to markers by TSSV
-    run_tssv(fastq_file, args.library_file, args.num_threads, output_path, args.qcplots)
+    tssv_output_path = os.path.join(tmp_dir, "tssv_output")
+    run_tssv(fastq_file_umi_in_header, args.library_file, args.num_threads, tssv_output_path, args.qcplots)
+    shutil.copy(os.path.join(tssv_output_path, "statistics.csv"), os.path.join(output_path, "statistics_preumi.csv"))
 
     # Convert to fastq data to BAM file
-    # Assume for now that the BED position file has the same basename and lives
-    # in the same dir as the library file.
-    # Paired end reads are already trimmed before FLASH, so skip trimming here.
-    bed_file = os.path.splitext(args.bed_file)[0] + '.bed'
-    bam_file = os.path.join(output_path, read_name + '.bam')
+    # Paired end reads are already trimmed before FLASH, so skip trimming here in that case.
+    bam_file = os.path.join(tmp_dir, read_name + '.bam')
     trim_flanks = not args.p
-    bam_file = fastq2bam(output_path, bam_file, bed_file,
+    bam_file = fastq2bam(tssv_output_path, bam_file, args.bed_file,
                          args.library_file, trim_flanks,
                          args.num_threads)
-
-    # Run UMIerrorcorrect
-    args_umierrrorcorrect = set_args_umierrorcorrect(args, read_name, bam_file, bed_file)
-    print(read_name)
-    print(bam_file)
-    print(bed_file)
+    
+    # Run UMIerrorcorrects
+    args_umierrrorcorrect = set_args_umierrorcorrect(args, output_path, read_name, bam_file)
     run_umi_errorcorrect(args_umierrrorcorrect)
+    if not args.keep_large_files:
+        shutil.rmtree(tmp_dir)
 
-    consensus_reads_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
-    filtered_reads_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
-    consensus_cutoff = 3
-    filter_bam(consensus_reads_file, filtered_reads_file, consensus_cutoff)
+    json_file_path = os.path.join(output_path, read_name + '_umi_families.json')
+    consensus_bam_file = os.path.join(output_path, read_name + '_consensus_reads.bam')
+    
+    if args.filter_model:
+        mlfilter_bam_file = os.path.join(output_path, read_name + '_mlfiltered_consensus_reads.bam')
+        if args.filter_threshold_path: 
+            consensus_bam_file = run_umifilter(consensus_bam_file, json_file_path, 
+                                        args.filter_model, mlfilter_bam_file,
+                                        thresholds_path=args.filter_threshold_path)
+        else:
+            consensus_bam_file = run_umifilter(consensus_bam_file, json_file_path, 
+                                        args.filter_model, mlfilter_bam_file,
+                                        threshold=args.filter_threshold)
+
+    filtered_bam_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.bam')
+    filter_bam(consensus_bam_file, filtered_bam_file, args.umi_member_threshold)
 
     # Calculate UMIerrorcorrect statistics
     stats_file = os.path.join(output_path, read_name + '.hist')
     run_get_consensus_statistics(output_path,
-                                 consensus_reads_file,
+                                 consensus_bam_file,
                                  stats_file,
                                  True,
                                  read_name)
 
-    # Convert to Fastq file and run FDStools
+    # Convert to Fastq file and then run FDStools to assign reads to alleles
     consensus_fastq_file = os.path.join(output_path, read_name + '_filtered_consensus_reads.fq')
-    bam2fastq(filtered_reads_file, consensus_fastq_file, num_threads=args.num_threads)
-    run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path)
+    bam2fastq(filtered_bam_file, consensus_fastq_file, num_threads=args.num_threads)
+    run_fdstools(consensus_fastq_file, args.library_file, args.ini_file, output_path, verbose=False)
     logging.info('Finished generating consensus sequences!')
 
     # If desired, the pipeline can output uncollapsed reads files that can be used for diagnosis. 
@@ -203,7 +255,6 @@ def main():
         uncollapse_reads(consensus_fastq_file, uncollapsed_path)
         run_fdstools(uncollapsed_path, args.library_file, args.ini_file, output_path, verbose=False)
         logging.info("Finished generating uncollapsed read files! ")
-
 
 if __name__ == '__main__':
     args = parseArgs()

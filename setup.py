@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 from setuptools import setup
 from setuptools.command.install import install
-import os
-import sys
-import subprocess
-
 
 install_requires = ["fdstools>=2.0.1",
+                    "umierrorcorrect>=0.29",
                     "pysam>=0.19.1",
-                    "umierrorcorrect==0.22"]
+                    "scikit-learn==1.1.1",
+                    "imbalanced-learn==0.9.1",
+                    "sklearn-pandas==2.2.0", 
+                    "numpy==1.23.5"]
 
 setup(name='umierrorcorrect_forensics',
       description='UMIerrorcorrect Forensics',
       #long_description = open('README.md').read(),
       #url='http://github.com/',
-      author='Froste Svensson & Arvid H Gynnå',
-      author_email='froste.svensson@gmail.com',
+      author='Arvid H Gynnå & Froste Svensson',
+      author_email='arvid.heden-gynna@polisen.se',
       license='mit',
       package_data={'umierrorcorrect_forensics': ['README.md']},
-      version="0.1",
+      version="0.2",
       include_package_data=True,
       install_requires=install_requires,
       #dependency_links=["https://github.com/tobbeost/umierrorcorrect/archive/v0.19.tar.gz"],
@@ -31,6 +31,7 @@ setup(name='umierrorcorrect_forensics',
                "umierrorcorrect_forensics/run_tssv.py",
                "umierrorcorrect_forensics/run_fdstools.py",
                "umierrorcorrect_forensics/fastq2sam.py",
+               "umierrorcorrect_forensics/run_umifilter.py",
                "umierrorcorrect_forensics/convert_fastq2bam.py",
                "umierrorcorrect_forensics/convert_bam2fastq.py",
                "umierrorcorrect_forensics/tools/uncollapse_reads.py",
