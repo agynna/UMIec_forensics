@@ -118,6 +118,7 @@ def set_args_preprocessing(args, read_name, output_path, **kwargs):
     args.gziptool = 'gzip'
     args.umi_length = 12
     args.spacer_length = 16
+    args.adapter_trimming = False
     return args
 
 def set_args_umierrorcorrect(args, output_path, read_name, bam_file):

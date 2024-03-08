@@ -3,18 +3,19 @@ from setuptools import setup
 from setuptools.command.install import install
 
 install_requires = ["fdstools>=2.0.1",
-                    "umierrorcorrect==0.22",
+                    "umierrorcorrect>=0.29",
                     "pysam>=0.19.1",
                     "scikit-learn==1.1.1",
                     "imbalanced-learn==0.9.1",
-                    "sklearn-pandas==2.2.0"]
+                    "sklearn-pandas==2.2.0", 
+                    "numpy==1.23.5"]
 
 setup(name='umierrorcorrect_forensics',
       description='UMIerrorcorrect Forensics',
       #long_description = open('README.md').read(),
       #url='http://github.com/',
-      author='Froste Svensson & Arvid H Gynnå',
-      author_email='froste.svensson@gmail.com',
+      author='Arvid H Gynnå & Froste Svensson',
+      author_email='arvid.heden-gynna@polisen.se',
       license='mit',
       package_data={'umierrorcorrect_forensics': ['README.md']},
       version="0.2",
