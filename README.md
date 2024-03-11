@@ -19,9 +19,9 @@ conda activate umiec
 Then umierrorcorrect_forensics can be installed by running:
 
 ```
-cd UMIec_forensics\
-pip install .\
-./setup_flash.py\
+cd UMIec_forensics/
+pip install ./
+./setup_flash.py
 ```
 ## Usages
 Example command for single ends:
@@ -36,10 +36,10 @@ run_umierrorcorrect_forensics.py -r1 data/example-2800M-1ng_R1.fastq.gz \
 ```
 Example command when using ML filter:
 ```
-run_umierrorcorrect_forensics.py -r1 data/example-2800M-1ng_R1.fastq.gz \
--o results -l data/ultra_library.txt -b data/ultra_markers.bed -g data/mini_hg38.fa -i data/ultra.ini \ 
+run_umierrorcorrect_forensics.py -r1 data/example-2800M-1ng_R1.fastq.gz -r2 data/example-2800M-1ng_R2.fastq.gz \
+-o results -l data/ultra_library.txt -b data/ultra_markers.bed -g data/mini_hg38.fa -i data/ultra.ini \
 --consensus_frequency_threshold 0 --umi_member_threshold 2 \
---filter_model data/221012-RFModelDict-separate.xz --filter_threshold 0.95 
+--filter_model data/221027-MLPmodel.xz --filter_threshold_path data/221027-MLPmodel-half-thresholds.tsv
 ```
 ## Settings
 The --library, --bed, --reference and --ini files are mandatory. 
