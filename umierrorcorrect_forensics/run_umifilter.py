@@ -137,7 +137,7 @@ def apply_filter(df_json, model_path, threshold=None, threshold_path=None):
     if threshold_path:
         threshold_dict = read_thresholds(threshold_path)
         df_out = filter_thresholds_dict(df_json, probabilities[:,0], threshold_dict)
-    elif threshold:
+    else:
         df_out = df_json.loc[probabilities[:,0] >= threshold, :]
     return df_out
 
